@@ -31,6 +31,11 @@ const dep=g('(function(){var n=0;for(var k of ["giant","fork","sling"]){R.sel=k;
 ok(dep>0,'deployed '+dep+' troops');
 for(let i=0;i<180*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
 const pct=g('R?destruction():-1');ok(pct>0,'raid destroyed '+Math.round(pct*100)+'%');
+// regression: a crowd of ducks must not get stuck shuffling around a shared waypoint (video 2026-11-20)
+g('D.army={fork:30,sling:10,giant:4};startRaid(4);');
+g('(function(){for(var k of ["fork","sling","giant"]){R.sel=k;for(var i=0;i<40;i++){var x=0.5,y=6+i*0.3;if(canDeploy(x,y))deploy(x,y);}}})()');
+for(let i=0;i<120*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
+const p4=g('destruction()');ok(p4>=0.9,'crowded raid on level 4 reaches '+Math.round(p4*100)+'% (needs 90%)');
 ok(g('!R.troops.some(t=>!t.dead&&t.attacking&&t.target&&!t.target.dead&&t.target.k&&rectDist(t.x,t.y,t.target)>(U[t.k].range+0.6))'),'no troop hits a building from out of range');
 ok(g('(selectBuilding(null),true)'),'deselect building');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

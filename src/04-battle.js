@@ -112,6 +112,7 @@ function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
 function troopTick(t, dt) {
   if (t.dead) return;
   t.cool -= dt; t.moving = false;
+  if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
   if (t.side === 'cat') return catTick(t, dt);
   var u = U[t.kind];
   if (u.pref === 'heal') { // nurse: follow and heal the most hurt duck nearby
@@ -136,7 +137,13 @@ function troopTick(t, dt) {
   if (!wp) { // already in the goal cell: walk the last bit straight to the nearest edge of the building
     var s0 = B[t.target.k].size; return step(t, clamp(t.x, t.target.x, t.target.x + s0), clamp(t.y, t.target.y, t.target.y + s0), u.speed, dt); }
   if (wp.wall && !wp.wall.dead && Math.hypot(wp.x - t.x, wp.y - t.y) < 1.2) { t.wall = wp.wall; return; }
-  if (Math.hypot(wp.x - t.x, wp.y - t.y) < .12) { t.path.shift(); return; }
+  // waypoints are tile centres shared by the whole squad: count one as reached when close, or when the next one is nearer,
+  // otherwise ducks pushing each other around the same point never get there and just shuffle on the spot
+  var wd = Math.hypot(wp.x - t.x, wp.y - t.y), nx = t.path[1];
+  if (wd < .35 || (nx && Math.hypot(nx.x - t.x, nx.y - t.y) < Math.hypot(nx.x - wp.x, nx.y - wp.y))) { t.path.shift(); t.stuck = 0; return; }
+  if (t.lastWd !== undefined && wd > t.lastWd - u.speed * dt * .25) t.stuck = (t.stuck || 0) + dt; else t.stuck = 0;
+  t.lastWd = wd;
+  if (t.stuck > 1.2) { t.path.shift(); t.stuck = 0; t.lastWd = undefined; return; }
   step(t, wp.x, wp.y, u.speed, dt);
 }
 function step(t, x, y, speed, dt) {
@@ -147,7 +154,7 @@ function attack(t, target, u) {
   if (t.cool > 0) return; t.cool = u.rate; t.atk = now();
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind);
   if (u.hit === 'shot' || u.hit === 'fire') { shoot(t, target, u.hit === 'fire' ? 'chili' : 'pebble', dmg, u.splash, 9, t.x, t.y, .7); return; }
-  setTimeout(function () { if (R && !t.dead) { damage(target, dmg, t); var c = target.k ? center(target) : target; R.fx.push({ t: 'hit', x: (c.x + t.x) / 2, y: (c.y + t.y) / 2, life: .3, max: .3, kind: u.hit }); } }, 230);
+  t.pend = { target: target, dmg: dmg, left: .23, kind: u.hit };   // the blow lands when the swing does
 }
 function catTick(t, dt) {
   var c = CATS[t.kind], foe = null, fd = 4.5;
@@ -191,7 +198,7 @@ function raidTick(dt) {
   R.buildings.forEach(function (b) { turretTick(b, dt); });
   R.shots = R.shots.filter(function (s) { return !shotTick(s, dt); });
   // soft separation so ducks don't stack on one spot
-  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); if (d > 0 && d < .45) { var p = (.45 - d) / 2 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
+  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r0 = ((U[a.kind] || CATS[a.kind] || {}).space >= 5 ? .35 : .2) + ((U[b.kind] || CATS[b.kind] || {}).space >= 5 ? .35 : .2); if (d > 0 && d < r0) { var p = (r0 - d) / 4 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
   var pct = destruction(), hqDead = R.buildings.some(function (b) { return b.k === 'hq' && b.dead; });
   R.stars = (pct >= .5 ? 1 : 0) + (hqDead ? 1 : 0) + (pct >= 1 ? 1 : 0); R.pct = pct;
   var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; });
