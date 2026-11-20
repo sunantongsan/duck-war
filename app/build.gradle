@@ -1,0 +1,35 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.sunantongsan.duckwar'
+    compileSdk 36
+    buildFeatures { buildConfig true }
+    defaultConfig {
+        applicationId 'com.sunantongsan.duckwar'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+        // Content patches (game.js, index.html, art) are downloaded from here at start-up.
+        buildConfigField 'String', 'PATCH_CHANNEL', '"test"'
+        buildConfigField 'String', 'PATCH_ORIGIN', groovy.json.JsonOutput.toJson(providers.gradleProperty('patchOrigin').getOrElse(''))
+        buildConfigField 'String', 'PATCH_BACKUP_ORIGIN', '""'
+    }
+    signingConfigs {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE_PATH')) {
+                storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+    buildTypes { release { if (System.getenv('ANDROID_KEYSTORE_PATH')) signingConfig signingConfigs.release } }
+    sourceSets { main.assets.srcDirs = [layout.buildDirectory.dir('generated/gameAssets'), layout.buildDirectory.dir('generated/patchAssets')] }
+}
+tasks.register('generatePatchManifest', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'node', 'scripts/patch.cjs', '--android', '--native-version', android.defaultConfig.versionCode.toString()
+}
+tasks.named('preBuild').configure { dependsOn 'generatePatchManifest' }
+dependencies { implementation 'androidx.webkit:webkit:1.14.0' }

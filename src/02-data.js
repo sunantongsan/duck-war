@@ -1,0 +1,51 @@
+// Duck War — what every building and troop is. Levels 1-15; the art changes shape every 3 levels (5 stages).
+// cost(lv) = price to build (lv 1) or to upgrade to lv. res: which resource pays. time(lv) in seconds.
+var STAGES = 5, MAX_LV = 15;
+function stageOf(lv) { return Math.min(STAGES, Math.floor((Math.max(1, lv) - 1) / 3) + 1); }
+function grow(base, lv, k) { return Math.round(base * Math.pow(k || 1.55, lv - 1)); }
+
+var B = {
+  hq:            { name: 'บ้านเป็ด',          size: 3, art: 'hq',            hp: 1500, res: 'honey', cost: 1000, time: 10, kind: 'hq', max: 1, store: 1500 },
+  honeypump:     { name: 'ปั๊มน้ำผึ้ง',        size: 2, art: 'honeypump',     hp: 420, res: 'veggie', cost: 150, time: 5, kind: 'make', make: 'honey', rate: 400, max: [1, 2, 3, 4, 5, 6, 6, 7] },
+  veggieblender: { name: 'เครื่องปั่นผัก',     size: 2, art: 'veggieblender', hp: 420, res: 'honey', cost: 150, time: 5, kind: 'make', make: 'veggie', rate: 400, max: [1, 2, 3, 4, 5, 6, 6, 7] },
+  syrupstove:    { name: 'เตาเคี่ยวไซรัป',    size: 2, art: 'syrupstove',    hp: 600, res: 'veggie', cost: 20000, time: 60, kind: 'make', make: 'syrup', rate: 20, unlock: 5, max: [0, 0, 0, 0, 1, 2, 2, 3] },
+  honeyjar:      { name: 'โหลน้ำผึ้ง',         size: 2, art: 'honeyjar',      hp: 500, res: 'veggie', cost: 300, time: 10, kind: 'store', store: 'honey', cap: 1500, max: [1, 1, 2, 2, 3, 3, 4, 4] },
+  veggiejar:     { name: 'โหลน้ำผัก',          size: 2, art: 'veggiejar',     hp: 500, res: 'honey', cost: 300, time: 10, kind: 'store', store: 'veggie', cap: 1500, max: [1, 1, 2, 2, 3, 3, 4, 4] },
+  syrupjar:      { name: 'โหลไซรัป',           size: 2, art: 'syrupjar',      hp: 700, res: 'veggie', cost: 25000, time: 60, kind: 'store', store: 'syrup', cap: 2000, unlock: 5, max: [0, 0, 0, 0, 1, 1, 1, 1] },
+  camp:          { name: 'ค่ายพักเป็ด',        size: 3, art: 'camp',          hp: 400, res: 'veggie', cost: 200, time: 8, kind: 'camp', space: 20, max: [1, 2, 2, 3, 3, 4, 4, 4] },
+  barracks:      { name: 'ลานฝึกเป็ด',         size: 2, art: 'barracks',      hp: 450, res: 'veggie', cost: 150, time: 6, kind: 'train', max: [1, 2, 2, 3, 3, 4, 4, 4] },
+  lab:           { name: 'ห้องทดลองเป็ด',      size: 2, art: 'lab',           hp: 500, res: 'veggie', cost: 5000, time: 30, kind: 'lab', unlock: 3, max: [0, 0, 1, 1, 1, 1, 1, 1] },
+  workshop:      { name: 'โรงนาช่างเป็ด',      size: 2, art: 'workshop',      hp: 500, res: 'honey', cost: 4000, time: 30, kind: 'deco', unlock: 4, max: [0, 0, 0, 1, 1, 1, 1, 1] },
+  slingshot:     { name: 'หนังสติ๊กยักษ์',      size: 2, turret: 'slingshot',  hp: 520, res: 'honey', cost: 250, time: 8, kind: 'defense', range: 6.5, dmg: 18, rate: 0.9, shot: 'rock', ground: true, max: [2, 2, 3, 3, 4, 4, 5, 5] },
+  boxtower:      { name: 'หอกล่องเป็ดยิงไกล',   size: 2, turret: 'boxtower',   hp: 480, res: 'honey', cost: 1000, time: 15, kind: 'defense', range: 8, dmg: 11, rate: 0.75, shot: 'pebble', ground: true, air: true, unlock: 2, max: [0, 1, 2, 2, 3, 3, 4, 4] },
+  mortar:        { name: 'หม้อความดันยิงไกล',  size: 2, turret: 'mortar',     hp: 500, res: 'honey', cost: 6000, time: 40, kind: 'defense', range: 10, minRange: 3, dmg: 30, rate: 4.5, shot: 'egg', splash: 1.5, ground: true, unlock: 3, max: [0, 0, 1, 1, 2, 2, 3, 3] },
+  watergun:      { name: 'ปืนฉีดน้ำต่อสู้อากาศ', size: 2, turret: 'watergun',  hp: 600, res: 'honey', cost: 22000, time: 60, kind: 'defense', range: 9, dmg: 60, rate: 1, shot: 'water', air: true, unlock: 4, max: [0, 0, 0, 1, 1, 2, 2, 3] },
+  chili:         { name: 'ป้อมเชฟพริกไฟ',       size: 2, turret: 'chili',      hp: 650, res: 'honey', cost: 40000, time: 90, kind: 'defense', range: 5, dmg: 40, rate: 0.55, shot: 'chili', ground: true, air: true, unlock: 6, max: [0, 0, 0, 0, 0, 1, 1, 2] },
+  wall:          { name: 'กำแพง',               size: 1, wall: true,           hp: 300, res: 'honey', cost: 50, time: 0, kind: 'wall', max: [0, 25, 50, 75, 100, 125, 150, 175] }
+};
+Object.keys(B).forEach(function (k) { B[k].key = k; });
+function maxCount(k, hqLv) { var m = B[k].max; return typeof m === 'number' ? m : (m[Math.min(m.length, hqLv) - 1] || 0); }
+function bCost(k, lv) { var b = B[k]; return b.wall ? grow(b.cost, lv, 2.1) : grow(b.cost, lv, 1.9); }
+function bTime(k, lv) { var b = B[k]; return lv === 1 && b.kind !== 'hq' ? b.time : Math.round(b.time * Math.pow(2.2, lv - 1)); }
+function bHp(k, lv) { return grow(B[k].hp, lv, 1.2); }
+function bMaxLv(k, hqLv) { return k === 'hq' ? MAX_LV : Math.min(MAX_LV, hqLv + (B[k].kind === 'wall' ? 0 : 1)); }
+
+// Troops. size = housing space; time = training seconds; pref: what they go for first.
+var U = {
+  fork:   { name: 'เป็ดส้อม',        art: 'fork',   h: 0.95, space: 1, cost: 25,  res: 'veggie', time: 5,  hp: 45,  dmg: 9,  rate: 1,   range: 0.5, speed: 1.6, pref: 'any',      hit: 'stab' },
+  sling:  { name: 'เป็ดหนังสติ๊ก',    art: 'sling',  h: 0.95, space: 1, cost: 50,  res: 'veggie', time: 6,  hp: 22,  dmg: 8,  rate: 1,   range: 3.5, speed: 1.5, pref: 'any',      hit: 'shot', air: false, shootsAir: true, unlock: 2 },
+  giant:  { name: 'เป็ดยักษ์กระทะ',   art: 'giant',  h: 1.35, space: 5, cost: 250, res: 'veggie', time: 30, hp: 320, dmg: 12, rate: 2,   range: 0.6, speed: 0.75, pref: 'defense', hit: 'smash', unlock: 3 },
+  digger: { name: 'เป็ดขุดดิน',       art: 'digger', h: 0.95, space: 1, cost: 40,  res: 'veggie', time: 7,  hp: 30,  dmg: 12, rate: 1,   range: 0.5, speed: 2.2, pref: 'resource', hit: 'stab', unlock: 4 },
+  pot:    { name: 'เป็ดหม้อ',          art: 'pot',    h: 1.1,  space: 2, cost: 100, res: 'veggie', time: 12, hp: 120, dmg: 18, rate: 1.4, range: 0.5, speed: 1.1, pref: 'wall',     hit: 'smash', wallBonus: 10, unlock: 5 },
+  nurse:  { name: 'เป็ดพยาบาล',       art: 'nurse',  h: 1.0,  space: 4, cost: 500, res: 'veggie', time: 40, hp: 150, dmg: 0,  heal: 18, rate: 1, range: 2.5, speed: 1.4, pref: 'heal', hit: 'heal', unlock: 6 },
+  chef:   { name: 'เป็ดเชฟพริก',       art: 'chef',   h: 1.0,  space: 4, cost: 600, res: 'veggie', time: 40, hp: 75,  dmg: 50, rate: 1.5, range: 3, speed: 1.4, pref: 'any', hit: 'fire', splash: 1, unlock: 7 },
+  pig:    { name: 'เป็ดขี่หมู',        art: 'pig',    h: 1.2,  space: 5, cost: 80,  res: 'syrup',  time: 45, hp: 280, dmg: 40, rate: 1,  range: 0.6, speed: 2.0, pref: 'defense', hit: 'smash', jump: true, unlock: 8 },
+  dog:    { name: 'หมาดัลเมเชียน',     art: 'dog',    h: 1.45, space: 10, cost: 300, res: 'syrup', time: 90, hp: 1100, dmg: 70, rate: 1.2, range: 0.7, speed: 1.1, pref: 'any', hit: 'bite', unlock: 9 }
+};
+Object.keys(U).forEach(function (k) { U[k].key = k; });
+function uHp(k, lv) { return grow(U[k].hp, lv || 1, 1.18); }
+function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, 1.18); }
+var CATS = { cat_spatula: { art: 'cat_spatula', h: 1, hp: 120, dmg: 12, rate: 1, range: 0.6, speed: 1.5, hit: 'smash' },
+             cat_pan: { art: 'cat_pan', h: 1.15, hp: 260, dmg: 16, rate: 1.3, range: 0.6, speed: 1.1, hit: 'smash' },
+             cat_king: { art: 'cat_king', h: 1.35, hp: 900, dmg: 40, rate: 1.4, range: 0.7, speed: 1.0, hit: 'smash' } };
+var RES = { honey: { name: 'น้ำผึ้ง', color: '#ffc93a' }, veggie: { name: 'น้ำผัก', color: '#77d957' }, syrup: { name: 'ไซรัป', color: '#e3425a' }, coin: { name: 'เหรียญเป็ด', color: '#ffb000' } };

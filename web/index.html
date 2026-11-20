@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Duck War สงคราม เป็ด เป็ด</title>
+<style>
+:root{--safe-l:env(safe-area-inset-left,0px);--safe-r:env(safe-area-inset-right,0px);--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+ --ink:#2b3a55;--cream:#fff7e6;--blue:#5bb8ff;--green:#5fcf3d;--gold:#ffc531}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#6fb84a;font-family:"Kanit","Prompt","Noto Sans Thai",system-ui,sans-serif;color:var(--ink)}
+#world{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.ic{display:inline-block;width:1.25em;height:1.25em;vertical-align:-.28em;background:center/contain no-repeat;margin-right:.15em}
+.ic-honey{background-image:url(assets/ic_honey.webp)}.ic-veggie{background-image:url(assets/ic_veggie.webp)}.ic-syrup{background-image:url(assets/ic_syrup.webp)}.ic-coin{background-image:url(assets/ic_coin.webp)}
+#res{position:fixed;top:calc(8px + var(--safe-t));left:calc(10px + var(--safe-l));right:calc(10px + var(--safe-r));display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.pill{position:relative;overflow:hidden;background:rgba(255,255,255,.88);border:2px solid #fff;border-radius:18px;padding:3px 12px 5px 8px;font-size:15px;box-shadow:0 3px 0 rgba(40,70,40,.25);white-space:nowrap}
+.pill b{font-weight:800}.pill small{opacity:.6;font-size:12px}
+.pill .fill{position:absolute;left:0;bottom:0;height:3px;opacity:.9}
+#home-ui .dock{position:fixed;bottom:calc(10px + var(--safe-b));left:calc(10px + var(--safe-l));display:flex;gap:10px}
+.round{width:68px;height:68px;border-radius:22px;background:linear-gradient(#fffdf5,#ffe9b8);border:3px solid #fff;box-shadow:0 4px 0 #c99a4a,0 6px 12px rgba(0,0,0,.2);font-size:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.round small{font-size:12px;font-weight:700;margin-top:4px}
+.round:active,.btn:active,.card:active,.tcard:active{transform:translateY(3px) scale(.97)}
+#btn-attack{position:fixed;right:calc(14px + var(--safe-r));bottom:calc(10px + var(--safe-b));width:118px;height:84px;border-radius:26px;background:linear-gradient(#ffd25a,#ff9a2e);color:#fff;font-size:22px;font-weight:900;text-shadow:0 2px 0 #b35a00;border:3px solid #fff;box-shadow:0 5px 0 #b35a00,0 8px 14px rgba(0,0,0,.25)}
+#panel{position:fixed;left:50%;bottom:calc(10px + var(--safe-b));transform:translate(-50%,140%);min-width:320px;max-width:92vw;background:var(--cream);border:3px solid #fff;border-radius:22px;padding:10px 14px;box-shadow:0 6px 0 #d9b46a,0 10px 20px rgba(0,0,0,.25);transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+#panel.open{transform:translate(-50%,0)}
+.p-title{display:flex;align-items:baseline;gap:10px;font-size:18px}.p-title small{opacity:.65}
+.p-info{font-size:13px;margin:2px 0 8px;opacity:.85}
+.p-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{padding:8px 14px;border-radius:14px;background:#fff;border:2px solid #e2d3b0;box-shadow:0 3px 0 #d6c39b;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:6px}
+.btn small{font-weight:500;opacity:.7}
+.btn.green{background:linear-gradient(#8de362,#4fbf33);color:#fff;border-color:#fff;box-shadow:0 3px 0 #2f8a1c;text-shadow:0 1px 0 #2f8a1c}
+.btn.gold{background:linear-gradient(#ffe27a,#ffb428);border-color:#fff;box-shadow:0 3px 0 #c27a0c}
+.btn.big{font-size:20px;padding:12px 30px;margin-top:10px}
+.cost{display:inline-flex;align-items:center;gap:2px;font-weight:800}.cost.short{color:#e23b3b}
+.note{opacity:.75;font-size:13px}
+#sheet{position:fixed;inset:6% 8%;background:var(--cream);border:4px solid #fff;border-radius:26px;box-shadow:0 8px 0 #d9b46a,0 14px 30px rgba(0,0,0,.35);display:none;flex-direction:column;overflow:hidden}
+#sheet.open{display:flex;animation:pop .28s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+.sheet-head{background:linear-gradient(#8fd2ff,#4aa8f0);color:#fff;font-size:22px;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;text-shadow:0 2px 0 #2a6fae}
+.sheet-head .x{width:40px;height:40px;border-radius:50%;background:linear-gradient(#ff8a7a,#e2453a);color:#fff;font-size:20px;border:3px solid #fff}
+.sheet-body{padding:14px;overflow:auto;flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{position:relative;background:#fff;border:2px solid #f0e2c2;border-radius:18px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 3px 0 #e2cfa6;font-size:14px}
+.card.off{opacity:.55}.card b{font-size:14px;text-align:center}.card small{opacity:.7;font-size:11px;text-align:center}
+.card .n{position:absolute;left:8px;top:6px;background:var(--ink);color:#fff;border-radius:10px;padding:0 7px;font-size:12px}
+.thumb{width:86px;height:70px;background:center bottom/contain no-repeat}.wallthumb{font-size:40px;display:flex;align-items:center;justify-content:center}
+.portrait{display:block;width:64px;height:64px;background:center/contain no-repeat}
+.army-head{margin-bottom:8px}
+.levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px}
+.lvl{background:#fff;border:2px solid #f0e2c2;border-radius:14px;padding:6px;display:flex;flex-direction:column;align-items:center;box-shadow:0 3px 0 #e2cfa6}.lvl.off{opacity:.45}.lvl b{font-size:20px}
+#confirm{position:fixed;top:calc(56px + var(--safe-t));left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border-radius:18px;padding:6px 8px 6px 14px;display:flex;gap:8px;align-items:center;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+#confirm .btn{padding:6px 14px}
+#raid-top{position:fixed;top:calc(8px + var(--safe-t));left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.9);border-radius:18px;padding:4px 16px;border:2px solid #fff;font-size:15px}
+.stars{color:#ffbf1f;font-size:24px;letter-spacing:2px;text-shadow:0 2px 0 #b97a00}.stars em,.result-stars em{color:#d9d2c2;font-style:normal;text-shadow:none}
+#troops{position:fixed;bottom:calc(8px + var(--safe-b));left:calc(10px + var(--safe-l));right:140px;display:flex;gap:8px;overflow-x:auto}
+.tcard{position:relative;flex:0 0 auto;width:84px;background:#fff;border:3px solid #fff;border-radius:16px;padding:4px;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 0 #c9b38a}
+.tcard.on{border-color:#ffc531;box-shadow:0 4px 0 #d08a00,0 0 0 3px #ffe38a}.tcard.off{opacity:.45}
+.tcard .cnt{position:absolute;top:2px;right:6px;font-weight:800;font-size:13px}.tcard small{font-size:11px;white-space:nowrap;overflow:hidden;max-width:100%}
+.tcard .portrait{width:52px;height:52px}
+#btn-end{position:fixed;right:calc(14px + var(--safe-r));bottom:calc(14px + var(--safe-b));background:linear-gradient(#ff8a7a,#e2453a);color:#fff;font-weight:800;border-radius:16px;padding:12px 18px;border:3px solid #fff;box-shadow:0 4px 0 #9d2a22}
+.result-stars{text-align:center;font-size:64px;color:#ffbf1f;text-shadow:0 4px 0 #b97a00}.result{text-align:center;font-size:18px}
+.sheet-body:has(.result-stars){text-align:center}
+#toast{position:fixed;top:30%;left:50%;transform:translate(-50%,-10px);background:rgba(40,50,70,.9);color:#fff;padding:10px 18px;border-radius:16px;font-size:16px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.p-fork{background-image:url(assets/p_fork.webp)}.p-sling{background-image:url(assets/p_sling.webp)}.p-giant{background-image:url(assets/p_giant.webp)}.p-digger{background-image:url(assets/p_digger.webp)}
+.p-pot{background-image:url(assets/p_pot.webp)}.p-nurse{background-image:url(assets/p_nurse.webp)}.p-chef{background-image:url(assets/p_chef.webp)}.p-pig{background-image:url(assets/p_pig.webp)}.p-dog{background-image:url(assets/p_dog.webp)}
+</style>
+</head>
+<body>
+<canvas id="world"></canvas>
+<div id="res"></div>
+<div id="home-ui">
+  <div class="dock">
+    <button class="round" id="btn-build">🔨<small>สร้าง</small></button>
+    <button class="round" id="btn-army">🪖<small>กองทัพ <span id="army-count"></span></small></button>
+  </div>
+  <button id="btn-attack">⚔ บุก!</button>
+</div>
+<div id="raid-ui" hidden><div id="raid-top"></div><div id="troops"></div><button id="btn-end">จบการบุก</button></div>
+<div id="confirm" hidden><span id="confirm-text"></span><button class="btn green" id="btn-ok">✓ วาง</button><button class="btn" id="btn-no">✕</button></div>
+<div id="panel"></div>
+<div id="sheet"></div>
+<div id="toast"></div>
+<script src="game.js"></script>
+</body>
+</html>
