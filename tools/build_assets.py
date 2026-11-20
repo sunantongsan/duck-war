@@ -23,15 +23,15 @@ def contact_shadow(im, ox, oy, radius_px):
     out = Image.new('RGBA', (W + 2 * pad, H + 2 * pad))
     m = Image.new('L', out.size, 0); d = ImageDraw.Draw(m)
     rx, ry = radius_px, radius_px * .55
-    cx, cy = ox + pad, oy + pad + ry * .15
-    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=120)
-    m = m.filter(ImageFilter.GaussianBlur(rx * .25))
+    cx, cy = ox + pad, oy + pad
+    d.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=95)
+    m = m.filter(ImageFilter.GaussianBlur(rx * .16))
     s = Image.new('RGBA', out.size, (24, 48, 26, 0)); s.putalpha(m)
     out.alpha_composite(s); out.alpha_composite(im, (pad, pad))
     return out, ox + pad, oy + pad
 
 def save_sprite(im, ox, oy, ppu, name, shadow_units=0):
-    if shadow_units: im, ox, oy = contact_shadow(im, ox, oy, shadow_units * ppu * .62)
+    if shadow_units: im, ox, oy = contact_shadow(im, ox, oy, shadow_units * ppu * .42)
     bb = im.getbbox(); im = im.crop(bb); ox -= bb[0]; oy -= bb[1]
     im.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
     return {'file': name + '.webp', 'ax': round(ox, 1), 'ay': round(oy, 1), 'ppu': round(ppu, 3), 'w': im.width, 'h': im.height}
@@ -43,8 +43,12 @@ def fit_of(im, ppu, size, fill=.95):
     w = (cols[-1] - cols[0] + 1) / ppu if len(cols) else 1
     return float(min(3.2, size * 2 ** .5 * fill / w))
 
+def clean(im):
+    """Shadow-catcher renders leave ~1/255 alpha haze over the whole frame; it shows as faint boxes in game. Drop it."""
+    a = np.array(im); a[a[..., 3] < 10] = 0; return Image.fromarray(a)
+
 def load(dirp, fn):
-    im = Image.open(os.path.join(dirp, fn)).convert('RGBA'); m = json.load(open(os.path.join(dirp, 'meta.json'))); F = im.size[0]
+    im = clean(Image.open(os.path.join(dirp, fn)).convert('RGBA')); m = json.load(open(os.path.join(dirp, 'meta.json'))); F = im.size[0]
     return im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F, m.get('pad', 1.9)
 
 # ---------- static buildings: 5 stages + rubble ----------
@@ -54,13 +58,13 @@ for key, src in STATIC.items():
     stages = []; size = SIZE.get(key, 2); fit = None
     for n in range(1, 6):
         if key == 'hq':
-            p = os.path.join(R45, 'hq', f'hq{n}.png'); im = Image.open(p).convert('RGBA'); F = im.size[0]; m = json.load(open(p + '_meta.json'))
+            p = os.path.join(R45, 'hq', f'hq{n}.png'); im = clean(Image.open(p).convert('RGBA')); F = im.size[0]; m = json.load(open(p + '_meta.json'))
             a = (im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F, m['pad'])
         else: a = load(os.path.join(R45, f'{src}{n}'), 'base.png')
         if fit is None: fit = fit_of(a[0], a[3], size)
         stages.append(save_sprite(a[0], a[1], a[2], a[3] / fit, f'b_{key}_{n}', size))
     if key == 'hq':
-        p = os.path.join(R45, 'hq', 'hq3_rubble.png'); im = Image.open(p).convert('RGBA'); F = im.size[0]; m = json.load(open(os.path.join(R45, 'hq', 'hq3.png_meta.json')))
+        p = os.path.join(R45, 'hq', 'hq3_rubble.png'); im = clean(Image.open(p).convert('RGBA')); F = im.size[0]; m = json.load(open(os.path.join(R45, 'hq', 'hq3.png_meta.json')))
         rub = save_sprite(im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F / fit, f'b_{key}_rubble', size)
     else:
         a = load(os.path.join(R45, f'{src}3'), 'base_rubble.png'); rub = save_sprite(a[0], a[1], a[2], a[3] / fit, f'b_{key}_rubble', size)
@@ -85,11 +89,11 @@ for key, src in TURRETS.items():
     for n in range(1, 6):
         d = os.path.join(R45, f'{src}{n}'); base, ox, oy, ppu, pad = load(d, 'base.png');
         if tfit is None: tfit = fit_of(base, ppu, 2, .9)
-        rub = Image.open(os.path.join(d, 'base_rubble.png')).convert('RGBA')
+        rub = clean(Image.open(os.path.join(d, 'base_rubble.png')).convert('RGBA'))
         heads = []
         for i in range(16):
             h = np.array(Image.open(os.path.join(d, f'head_{i:02d}.png')).convert('RGBA')); h[h[..., 3] < 30] = 0; heads.append(Image.fromarray(h))
-        base, sox, soy = contact_shadow(base, ox, oy, 2 * ppu / tfit * .62)
+        base, sox, soy = contact_shadow(base, ox, oy, 2 * ppu / tfit * .42)
         pad_px = (base.size[0] - heads[0].size[0]) // 2
         def padded(im):
             o = Image.new('RGBA', base.size); o.alpha_composite(im, (pad_px, pad_px)); return o

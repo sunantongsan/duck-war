@@ -3,7 +3,7 @@
 var $ = function (id) { return document.getElementById(id); };
 var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
 var now = function () { return Date.now(); };
-var TEST = !!(window.DuckContent && /test/.test(window.DuckContent.label || '')) || /[?&]test/.test(location.search);
+var TEST = !!(window.DuckContent && (window.DuckContent.channel === 'test' || /test/.test(window.DuckContent.label || ''))) || /[?&]test/.test(location.search);
 var ISO = 0.75, H = Math.SQRT1_2, ZUP = 0.661;           // sin/cos of the 48.6° camera elevation
 var MAP = 24;                                            // the base is MAP x MAP tiles
 

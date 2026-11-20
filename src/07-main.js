@@ -33,7 +33,7 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 function draw(dt) {
-  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
+  FDT = dt || 0; ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
   drawGround();
   var sc = scene(), list = [];
   if (screen === 'raid' && R && !R.over && R.pick) { // red zone where ducks can't land
@@ -50,13 +50,15 @@ function draw(dt) {
     R.troops.forEach(function (t) { list.push({ d: t.x + t.y + .2, f: function () { drawTroop(t); } }); });
   }
   list.sort(function (a, b) { return a.d - b.d; }).forEach(function (o) { o.f(); });
+  drawSmoke(dt || 0);
   if (screen === 'raid' && R) {
     R.buildings.forEach(function (b) { if (!b.dead && b.hp < b.max && b.k !== 'wall') { var c = center(b); hpBar(c.x, c.y, B[b.k].size * 1.3, b.hp / b.max, '#7be36a'); } });
     R.shots.forEach(drawShot); R.fx = R.fx.filter(function (f) { return drawFx(f, dt); });
   }
 }
 function boot() {
-  D = loadSave() || newGame(); fit(); centerCamera(); homeTick(); hud();
+  D = loadSave() || newGame(); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades
+  fit(); centerCamera(); homeTick(); hud();
   $('btn-build').onclick = buildMenu; $('btn-army').onclick = armyMenu; $('btn-attack').onclick = attackMenu;
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };

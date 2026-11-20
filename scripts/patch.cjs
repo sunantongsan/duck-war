@@ -9,7 +9,7 @@ require('./bundle.cjs').bundle();
 function build(output=path.join(root,'patch-dist')){
  const config=JSON.parse(fs.readFileSync(path.join(root,'patch-config.json')));
  if(config.schema!==1||!['test','live'].includes(config.channel)||!Number.isSafeInteger(config.nativeVersion)||!Number.isSafeInteger(config.contentVersion))throw Error('Invalid patch configuration');
- const web=path.join(root,'web'),info={contentVersion:config.contentVersion,label:config.label};
+ const web=path.join(root,'web'),info={contentVersion:config.contentVersion,label:config.label,channel:config.channel};
  const content=p=>{const bytes=fs.readFileSync(path.join(web,p));
   if(p==='game.js')return Buffer.from('window.DuckContent='+JSON.stringify(info)+';\n'+bytes.toString('utf8'));return bytes;};
  const paths=['index.html','game.js',...fs.readdirSync(path.join(web,'assets')).filter(p=>p.endsWith('.webp')).sort().map(p=>'assets/'+p)];
