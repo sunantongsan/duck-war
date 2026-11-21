@@ -16,6 +16,10 @@ function hud() {
     if (r === 'syrup' && hqLv() < 5 && !D.res.syrup) return;
     var cap = capacity(r), pill = h('div', 'pill', icon(r) + '<b>' + fmt(D.res[r]) + '</b>' + (cap !== Infinity ? '<small>/' + fmt(cap) + '</small>' : ''));
     if (cap !== Infinity) { var bar = h('span', 'fill'); bar.style.width = Math.min(100, D.res[r] / cap * 100) + '%'; bar.style.background = RES[r].color; pill.appendChild(bar); }
+    if (r !== 'coin') pill.onclick = function () { // tap a resource: jump to its maker to boost it
+      if (screen !== 'home') return; var mk = D.buildings.filter(function (b) { return B[b.k].kind === 'make' && B[b.k].make === r && b.lv > 0; });
+      if (!mk.length) { toast('ยังไม่มีอาคารผลิต' + RES[r].name); return; }
+      mk.sort(function (a, b) { return (a.boost || 0) - (b.boost || 0); }); closeSheet(); selectBuilding(mk[0]); dirty = true; };
     top.appendChild(pill);
   });
   top.appendChild(h('div', 'pill', '🔨 <b>' + (D.builders - busyBuilders()) + '/' + D.builders + '</b>'));
@@ -43,6 +47,13 @@ function selectBuilding(b) {
     u.onclick = function () { if (upgradeBuilding(b)) { selectBuilding(b); hud(); } }; row.appendChild(u);
   } else row.appendChild(h('span', 'note', b.k === 'hq' ? 'เลเวลสูงสุด' : 'อัปเกรดบ้านเป็ดเพื่อปลดล็อกเลเวลถัดไป'));
   var mv = h('button', 'btn', '↔ ย้าย'); mv.onclick = function () { moving = { b: b, x: b.x, y: b.y }; p.classList.remove('open'); setMode('move'); }; row.appendChild(mv);
+  if (d.kind === 'make' && b.lv > 0 && !b.up) {
+    var on = b.boost && b.boost > now(), row2 = h('div', 'p-row boost');
+    row2.appendChild(h('span', 'note', on ? '⚡ ผลิต x2 อีก ' + clock(b.boost - now()) : '⚡ เร่งผลิต x2 นาน 1 ชม.'));
+    var bc = h('button', 'btn gold', (on ? '+1 ชม. ' : '') + costTag('coin', boostCoins(b))); bc.onclick = function () { if (boostWithCoins(b)) { selectBuilding(b); hud(); } }; row2.appendChild(bc);
+    var bv = h('button', 'btn video', '▶ ดูวิดีโอ <small>เหลือ ' + videosLeft() + '</small>'); bv.onclick = function () { boostWithVideo(b, function () { selectBuilding(b); }); }; row2.appendChild(bv);
+    p.appendChild(row2);
+  }
   if (d.kind === 'train' || d.kind === 'camp') { var a = h('button', 'btn', '🪖 กองทัพ'); a.onclick = armyMenu; row.appendChild(a); }
   p.appendChild(row); p.classList.add('open');
 }

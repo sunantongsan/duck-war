@@ -7,6 +7,8 @@ function buildingAt(w, list) {
 input.tap = function (w) {
   if (screen === 'home') {
     if (placing || moving) { var o = placing || moving, s = B[placing ? placing.k : moving.b.k].size; o.x = Math.round(w.x - s / 2); o.y = Math.round(w.y - s / 2); dirty = true; return; }
+    if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < .8) { // tap the colonel: he salutes and says something
+      COLONEL.atk = now(); COLONEL.wait = 2; COLONEL.goal = null; buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; buzz('light'); } dirty = true;
   } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
 };
@@ -24,7 +26,7 @@ input.release = function () { stream = null; };
 
 function frame(t) {
   var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
-  if (screen === 'home') { homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected) selectBuilding(selected); writeSave(); } }
+  if (screen === 'home') { colonelTick(dt); homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected) selectBuilding(selected); writeSave(); } }
   if (screen === 'raid' && R) {
     raidTick(dt); raidHud();
     if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; if (deploy(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4)) raidBar(); }
@@ -46,6 +48,7 @@ function draw(dt) {
     tileDiamond(ghost.x, ghost.y, B[gk].size, ok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', ok ? '#5fe07a' : '#ff5a5a'); }
   sc.buildings.forEach(function (b) { if (moving && moving.b === b) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
   if (ghost && screen === 'home') { var k2 = placing ? placing.k : moving.b.k, gb = { id: -1, k: k2, x: ghost.x, y: ghost.y, lv: placing ? 1 : moving.b.lv, aim: 2.36 }; list.push({ d: ghost.x + ghost.y + B[k2].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, sc); ctx.globalAlpha = 1; } }); }
+  if (screen === 'home' && COLONEL && ART.troops.colonel) list.push({ d: COLONEL.x + COLONEL.y + .2, f: function () { drawTroop(COLONEL); } });
   if (screen === 'raid' && R) {
     R.troops.forEach(function (t) { list.push({ d: t.x + t.y + .2, f: function () { drawTroop(t); } }); });
   }

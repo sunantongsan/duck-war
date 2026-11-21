@@ -34,10 +34,16 @@ function startRaid(n) {
   holders.forEach(function (b) { ['honey', 'veggie', 'syrup'].forEach(function (r) { b.loot[r] = share[r] ? Math.round(base.loot[r] * b.loot[r] / share[r]) : 0; }); });
   R.lootTotal = base.loot;
   var hq = R.buildings.find(function (b) { return b.k === 'hq'; });
-  base.cats.forEach(function (k, i) { var c = CATS[k]; R.troops.push({ side: 'cat', kind: k, x: hq.x + 1.5 + Math.cos(i * 2) * 2.5, y: hq.y + 1.5 + Math.sin(i * 2) * 2.5, hp: c.hp, max: c.hp, cool: 0, home: { x: hq.x + 1.5, y: hq.y + 1.5 }, dir: 2 }); });
+  base.cats.forEach(function (k, i) { var c = CATS[k], sp = freeSpot(hq.x + 1.5, hq.y + 1.5, 2.2 + i * .6, i); R.troops.push({ side: 'cat', kind: k, x: sp.x, y: sp.y, hp: c.hp, max: c.hp, cool: 0, home: { x: hq.x + 1.5, y: hq.y + 1.5 }, dir: 2 }); });
   R.pick = Object.keys(R.army).find(function (k) { return R.army[k] > 0; }) || null;
 }
 
+function inBuilding(x, y) { return R.buildings.some(function (b) { if (b.dead || b.k === 'wall') return false; var s = B[b.k].size; return x > b.x - .15 && y > b.y - .15 && x < b.x + s + .15 && y < b.y + s + .15; }); }
+function freeSpot(cx, cy, r, seed) { // open ground near (cx, cy), so a guard is never hidden inside a building
+  for (var ring = 0; ring < 6; ring++) for (var i = 0; i < 16; i++) { var a = (i + seed * 5) / 16 * 6.283, rr = r + ring * .7, x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+    if (x > 1 && y > 1 && x < MAP - 1 && y < MAP - 1 && !inBuilding(x, y)) return { x: x, y: y }; }
+  return { x: cx + r, y: cy };
+}
 function rectDist(px, py, b) { var s = B[b.k].size, dx = Math.max(b.x - px, 0, px - (b.x + s)), dy = Math.max(b.y - py, 0, py - (b.y + s)); return Math.hypot(dx, dy); }
 function center(b) { var s = B[b.k].size / 2; return { x: b.x + s, y: b.y + s }; }
 function alive(list) { return list.filter(function (o) { return !o.dead; }); }
@@ -160,8 +166,11 @@ function catTick(t, dt) {
   var c = CATS[t.kind], foe = null, fd = 4.5;
   alive(R.troops).forEach(function (o) { if (o.side === 'duck') { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
   if (foe) { t.face = Math.atan2(foe.y - t.y, foe.x - t.x); if (fd > c.range + .45) return step(t, foe.x, foe.y, c.speed, dt); return attack(t, foe, c); }
-  if (!t.stroll || Math.hypot(t.stroll.x - t.x, t.stroll.y - t.y) < .1) t.stroll = { x: t.home.x + (Math.random() - .5) * 5, y: t.home.y + (Math.random() - .5) * 5 };
-  step(t, t.stroll.x, t.stroll.y, c.speed * .35, dt);
+  if (!t.stroll || Math.hypot(t.stroll.x - t.x, t.stroll.y - t.y) < .1) { t.stroll = null;
+    for (var i = 0; i < 12 && !t.stroll; i++) { var g = { x: t.home.x + (Math.random() - .5) * 7, y: t.home.y + (Math.random() - .5) * 7 }; if (!inBuilding(g.x, g.y)) t.stroll = g; }
+    if (!t.stroll) return; }
+  var sx0 = t.x, sy0 = t.y; step(t, t.stroll.x, t.stroll.y, c.speed * .35, dt);
+  if (inBuilding(t.x, t.y) && !inBuilding(sx0, sy0)) { t.x = sx0; t.y = sy0; t.stroll = null; }   // walk round buildings, not through them
 }
 function turretTick(b, dt) {
   var d = B[b.k]; if (d.kind !== 'defense' || b.dead) return; b.cool -= dt;

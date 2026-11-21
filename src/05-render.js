@@ -38,6 +38,7 @@ function drawBuilding(b, scene) {
   if (d.turret) drawTurret(b, c, false);
   else sprite(ART.buildings[d.art].stages[stage - 1], c.x, c.y, { squash: wobble(b), alpha: b.lv === 0 ? .55 : 1 });
   if (b.up) drawScaffold(b, c);
+  else if (b.boost && b.boost > now()) drawBoost(b, c);
   if (b.max && b.hp < b.max * .5) smoke(c, b);
 }
 function drawTurret(b, c, dead) {
@@ -85,6 +86,12 @@ function emitSmoke(x, y, z, kind, size, n) {
     vx: (Math.random() - .5) * (kind === 'dust' ? 1.6 : .15), vy: (Math.random() - .5) * (kind === 'dust' ? 1.6 : .15), age: 0, life: kind === 'dust' ? .9 + Math.random() * .6 : 2.2 + Math.random() * 1.2,
     size: size * (.45 + Math.random() * .3), kind: kind, tex: Math.random() < .5 ? 0 : 1, rot: Math.random() * 6.28, spin: (Math.random() - .5) * .6 });
 }
+function drawBoost(b, c) { // little ⚡x2 tag with time left over a boosted maker
+  var p = toScreen(c.x, c.y), y = p.y - cam.s * 1.9 - Math.sin(now() / 300) * 3, txt = '⚡x2 ' + clock(b.boost - now());
+  ctx.font = 'bold 12px sans-serif'; var w = ctx.measureText(txt).width + 14;
+  ctx.fillStyle = 'rgba(255,190,30,.92)'; roundRect(p.x - w / 2, y - 16, w, 20, 10); ctx.fill();
+  ctx.fillStyle = '#5a3300'; ctx.textAlign = 'center'; ctx.fillText(txt, p.x, y - 2);
+}
 function smoke(c, b) { // a damaged building keeps smoking, thicker and darker the lower its HP
   var hurt = 1 - b.hp / b.max; b.smokeT = (b.smokeT || 0) - FDT; if (b.smokeT > 0) return;
   b.smokeT = .32 - hurt * .18; var s = B[b.k].size; emitSmoke(c.x + (Math.random() - .5) * s * .3, c.y + (Math.random() - .5) * s * .3, .5 + s * .25, hurt > .75 ? 'dark' : 'grey', .8 + s * .35);
@@ -114,7 +121,7 @@ function hpBar(x, y, z, k, color) {
 
 // ---------- troops ----------
 function drawTroop(t) {
-  var u = t.side === 'cat' ? CATS[t.kind] : U[t.kind], a = ART.troops[u.art], L = ART.troopLayout; if (!a) return;
+  var u = t.side === 'cat' ? CATS[t.kind] : t.side === 'hero' ? HEROES[t.kind] : U[t.kind], a = ART.troops[u.art], L = ART.troopLayout; if (!a) return;
   var im = img(a.file); if (!ready(im)) return;
   var dir = ((Math.round((t.face === undefined ? Math.PI / 2 : t.face) / (Math.PI / 4)) % 8) + 8) % 8, col, n = now(), alpha = 1;
   var atkQ = t.atk ? (n - t.atk) / 520 : 9;

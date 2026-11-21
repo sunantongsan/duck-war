@@ -38,4 +38,15 @@ for(let i=0;i<120*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
 const p4=g('destruction()');ok(p4>=0.9,'crowded raid on level 4 reaches '+Math.round(p4*100)+'% (needs 90%)');
 ok(g('!R.troops.some(t=>!t.dead&&t.attacking&&t.target&&!t.target.dead&&t.target.k&&rectDist(t.x,t.y,t.target)>(U[t.k].range+0.6))'),'no troop hits a building from out of range');
 ok(g('(selectBuilding(null),true)'),'deselect building');
+// production boost: x2 only for the boosted hour, coins charged
+g('D.res.honey=0;var pm=D.buildings.find(b=>b.k==="honeypump");pm.up=null;delete pm.boost;D.t=Date.now()-3600000;homeTick();');
+const base=g('D.res.honey');
+g('D.res.honey=0;var c0=D.res.coin;boostWithCoins(pm);D.t=Date.now()-3600000;homeTick();');
+const boosted=g('D.res.honey');
+ok(Math.abs(boosted-2*base)<base*0.02,'boost doubles an hour of honey ('+Math.round(base)+' -> '+Math.round(boosted)+')');
+ok(g('c0-D.res.coin===boostCoins(pm)'),'boost costs duck coins');
+g('D.res.honey=0;pm.boost=Date.now()-3600000-5000;D.t=Date.now()-3600000;homeTick();');
+ok(Math.abs(g('D.res.honey')-base)<base*0.02,'expired boost gives normal rate');
+ok(g('videosLeft()')===5,'5 videos a day');
+g('colonelTick(0.1);for(let i=0;i<200;i++)colonelTick(0.1);');ok(g('!!COLONEL&&!insideBuilding(COLONEL.x,COLONEL.y)'),'colonel strolls outside buildings');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

@@ -54,7 +54,14 @@ def load(dirp, fn):
 # ---------- static buildings: 5 stages + rubble ----------
 STATIC = {'hq': 'hq', 'barracks': 'barracks', 'workshop': 'redbarn', 'honeypump': 'pumpY', 'veggieblender': 'blenderG', 'syrupstove': 'stoveR',
           'honeyjar': 'jarY', 'veggiejar': 'jarG', 'syrupjar': 'jarR', 'camp': 'camp', 'airfield': 'castle', 'lab': 'lab', 'pantry': 'tech', 'hero': 'hero'}
+# ONLY=veggieblender,cat_king,... rebuilds just those keys and keeps everything else from the current art.json
+ONLY = set(filter(None, os.environ.get('ONLY', '').split(',')))
+PREV = json.load(open(os.path.join(ROOT, 'web', 'data', 'art.json'))) if ONLY else None
+def keep(section, key):
+    if ONLY and key not in ONLY and key in PREV.get(section, {}): ART[section][key] = PREV[section][key]; return True
+    return False
 for key, src in STATIC.items():
+    if keep('buildings', key): continue
     stages = []; size = SIZE.get(key, 2); fit = None
     for n in range(1, 6):
         if key == 'hq':
@@ -85,6 +92,7 @@ PICK = [min(range(16), key=lambda i: abs(math.atan2(math.sin(head_angle(i)[0] - 
 TURRETS = {'slingshot': 'sling', 'boxtower': 'boxtower', 'mortar': 'mortar', 'watergun': 'aa', 'chili': 'chef', 'rockets': 'rocket', 'fan': 'fan', 'lens': 'lens'}
 CELL = 192
 for key, src in TURRETS.items():
+    if keep('turrets', key): continue
     stages = []; tfit = None
     for n in range(1, 6):
         d = os.path.join(R45, f'{src}{n}'); base, ox, oy, ppu, pad = load(d, 'base.png');
@@ -123,6 +131,7 @@ for key, src in TURRETS.items():
 
 # ---------- walls: 6 tiers x (post, link along +x, link along +y) ----------
 for t in range(1, 7):
+    if ONLY and keep('walls', str(t)): continue
     pieces = {}
     for p in ('post', 'linkx', 'linky'):
         d = os.path.join(R45, f'wall{t}{p}')
@@ -134,13 +143,14 @@ print('walls', len(ART['walls']))
 
 # ---------- troops: 8 directions x 21 frames (idle 0-3, walk 4-11, attack 12-15, death 16-20), 180x192 cells ----------
 TROOPS = {'fork': 'fork', 'sling': 'sling', 'giant': 'giant', 'nurse': 'nurse', 'digger': 'digger', 'pot': 'armor', 'chef': 'chef', 'pig': 'pig_rider',
-          'bomber': 'bomber', 'witch': 'witch', 'dog': 'dog', 'egret': 'egret', 'cat_spatula': 'cat_spatula', 'cat_pan': 'cat_pan', 'cat_chili': 'cat_chili', 'cat_bomb': 'cat_bomb', 'cat_king': 'cat_king'}
+          'bomber': 'bomber', 'witch': 'witch', 'dog': 'dog', 'egret': 'egret', 'cat_spatula': 'cat_spatula', 'cat_pan': 'cat_pan', 'cat_chili': 'cat_chili', 'cat_bomb': 'cat_bomb', 'cat_king': 'cat_king', 'colonel': 'colonel'}
 CW, CH = 180, 192
 def outline(im):
     a = im.split()[3].point(lambda v: 255 if v > 90 else 0).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(.5))
     o = Image.new('RGBA', im.size, (58, 38, 22, 0)); o.putalpha(a.point(lambda v: int(v * .85))); o.alpha_composite(im); return o
 OLD = json.load(open(os.path.join(ROOT, 'web', 'data', 'art.json'))) if os.environ.get('SKIP_TROOPS') else None
 for key, src in TROOPS.items():
+    if keep('troops', key): continue
     if OLD:
         if key in OLD['troops']: ART['troops'][key] = OLD['troops'][key]
         continue

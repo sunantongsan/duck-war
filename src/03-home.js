@@ -24,9 +24,11 @@ function count(k) { return D.buildings.filter(function (b) { return b.k === k; }
 
 // Advance the base to the current time (also after the app was closed).
 function homeTick() {
-  var t = now(), dt = Math.max(0, Math.min(t - D.t, 30 * 864e5)) / 3600000; D.t = t;
+  var t0 = D.t, t = now(), dt = Math.max(0, Math.min(t - t0, 30 * 864e5)) / 3600000; D.t = t;
   ['honey', 'veggie', 'syrup'].forEach(function (r) {
-    var add = 0; D.buildings.forEach(function (b) { var d = B[b.k]; if (d.kind === 'make' && d.make === r && !b.up) add += rate(b) * dt; });
+    var add = 0; D.buildings.forEach(function (b) { var d = B[b.k]; if (d.kind === 'make' && d.make === r && !b.up) {
+      var boosted = b.boost ? Math.max(0, Math.min(t, b.boost) - Math.max(t0, t - dt * 3600000)) / 3600000 : 0;   // hours of this stretch under x2
+      add += rate(b) * (dt + boosted); } });
     D.res[r] = Math.min(capacity(r), D.res[r] + add);
   });
   D.buildings.forEach(function (b) { if (b.up && b.up.until <= t) { b.lv = b.up.to; delete b.up; b.pop = now(); toast(B[b.k].name + ' เลเวล ' + b.lv + ' เสร็จแล้ว!'); buzz('success'); dirty = true; } });
@@ -79,3 +81,44 @@ function finishTraining() {
   if (!pay('coin', c)) return; D.queue.forEach(function (q) { q.until = now(); }); homeTick(); writeSave();
 }
 function moveBuilding(b, x, y) { if (!footprintFree(b.k, x, y, b.id)) return false; b.x = x; b.y = y; writeSave(); return true; }
+
+// ---------- production boost: x2 for an hour, paid with duck coins or a rewarded video ----------
+var BOOST_MS = 3600000, VIDEO_PER_DAY = 5;
+function boostCoins(b) { return Math.max(10, Math.round(rate(b) / 40) * 5); }
+function videosLeft() { var day = new Date().toDateString(); if (D.vidDay !== day) { D.vidDay = day; D.vids = 0; } return VIDEO_PER_DAY - (D.vids || 0); }
+function applyBoost(b) { b.boost = Math.max(now(), b.boost || 0) + BOOST_MS; b.pop = now(); buzz('success'); toast('⚡ ' + B[b.k].name + ' ผลิตเร็ว x2 นาน 1 ชั่วโมง'); writeSave(); dirty = true; }
+function boostWithCoins(b) { var c = boostCoins(b); if (D.res.coin < c) { toast('เหรียญเป็ดไม่พอ'); buzz('heavy'); return false; } D.res.coin -= c; applyBoost(b); return true; }
+function boostWithVideo(b, done) {
+  if (videosLeft() <= 0) { toast('ดูวิดีโอครบ ' + VIDEO_PER_DAY + ' ครั้งแล้ววันนี้'); return; }
+  showRewardedVideo(function (ok) { if (!ok) { toast('ต้องดูวิดีโอจนจบถึงได้รางวัล'); return; } D.vids = (D.vids || 0) + 1; applyBoost(b); if (done) done(); });
+}
+// Rewarded video: the Android app provides window.DuckAds once an ad network is wired in.
+// Until then test builds show a 5-second stand-in so the flow can be tried end to end.
+function showRewardedVideo(cb) {
+  if (window.DuckAds && window.DuckAds.showRewarded) { window.duckAdResult = function (ok) { window.duckAdResult = null; cb(!!ok); }; window.DuckAds.showRewarded(); return; }
+  if (!TEST) { toast('วิดีโอยังไม่พร้อม ลองใหม่ภายหลัง'); return; }
+  var o = document.createElement('div'); o.className = 'adfake'; document.body.appendChild(o); var left = 5;
+  (function tick() { o.innerHTML = '<div>📺 วิดีโอโฆษณา (ตัวอย่างสำหรับทดสอบ)</div><b>' + left + '</b>'; if (left-- > 0) setTimeout(tick, 1000); else { o.remove(); cb(true); } })();
+}
+
+// ---------- the colonel: strolls round the duck house, stops to look about ----------
+var COLONEL = null;
+function colonelTick(dt) {
+  var hq = D.buildings.find(function (b) { return b.k === 'hq'; }); if (!hq) return;
+  var hc = { x: hq.x + 1.5, y: hq.y + 1.5 };
+  if (!COLONEL) COLONEL = { side: 'hero', kind: 'colonel', x: hc.x + 2.2, y: hc.y + .4, face: 2.36, hp: 1, max: 1, wait: 1 };
+  var c = COLONEL; c.moving = false;
+  if (c.wait > 0) { c.wait -= dt; return; }
+  if (!c.goal) {
+    for (var i = 0; i < 20 && !c.goal; i++) { var a = Math.random() * 6.28, r = 2.2 + Math.random() * 1.8, g = { x: hc.x + Math.cos(a) * r, y: hc.y + Math.sin(a) * r };
+      if (g.x > .5 && g.y > .5 && g.x < MAP - .5 && g.y < MAP - .5 && !insideBuilding(g.x, g.y)) c.goal = g; }
+    if (!c.goal) { c.wait = 1; return; }
+  }
+  var dx = c.goal.x - c.x, dy = c.goal.y - c.y, d = Math.hypot(dx, dy), st = HEROES.colonel.speed * dt;
+  if (d < .05) { c.goal = null; c.wait = 1.5 + Math.random() * 3; if (Math.random() < .4) c.atk = now(); return; }   // pause, sometimes a salute
+  var nx = c.x + dx / d * Math.min(st, d), ny = c.y + dy / d * Math.min(st, d);
+  if (insideBuilding(nx, ny)) { c.goal = null; c.wait = .5; return; }
+  c.x = nx; c.y = ny; c.face = Math.atan2(dy, dx); c.moving = true; c.walk = (c.walk || 0) + st; dirty = true;
+}
+function insideBuilding(x, y) { return D.buildings.some(function (b) { var s = B[b.k].size; return x > b.x - .1 && y > b.y - .1 && x < b.x + s + .1 && y < b.y + s + .1; }); }
+var COLONEL_LINES = ['ทหารเป็ด! เตรียมพร้อม!', 'แมวจะไม่ได้แตะไข่ของเราแม้แต่ฟองเดียว', 'อัปเกรดฐานให้แข็งแรงไว้นะ', 'ก๊าบ! ผู้พันตรวจแถว', 'น้ำผึ้งพร้อม น้ำผักพร้อม บุกได้!'];

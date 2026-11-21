@@ -611,24 +611,27 @@ elif DEF == "blenderG":   # giant veggie blender
     HB = [0.8, 0.95, 1.05, 1.15, 1.25][S - 1]
     nj = [1, 1, 2, 2, 3][S - 1]
     bm_ = ["white", "teal", "teal", "gunmetal", "gold"][S - 1]
-    box((0, 0.05, 0.18), (0.75 + 0.1 * (nj - 1), 0.6, 0.36), bm_, bevel=0.06)
-    for k in range(3): sph((-0.2 + 0.2 * k, -0.26, 0.2), (0.04, 0.02, 0.04), ["red", "green" if "green" in M else "toyG", "toyY"][k])
+    box((0.08, -0.08, 0.035), (1.5, 1.3, 0.07), "wood2", bevel=0.025)               # wooden deck: everything stands on it
+    for k in range(5): box((0.08, -0.08 - 0.52 + 0.26 * k, 0.072), (1.46, 0.012, 0.006), "bark", bevel=0)
+    box((0, 0.05, 0.25), (0.75 + 0.1 * (nj - 1), 0.6, 0.36), bm_, bevel=0.06)
+    for k in range(3): sph((-0.2 + 0.2 * k, -0.26, 0.27), (0.04, 0.02, 0.04), ["red", "green" if "green" in M else "toyG", "toyY"][k])
     for i in range(nj):
         x = (i - (nj - 1) / 2) * 0.42
         jh = 0.5 + 0.06 * S
-        cyl((x, 0.05, 0.36 + jh * 0.35), 0.17, jh * 0.7, "veg", v=24)
-        cyl((x, 0.05, 0.36 + jh / 2), 0.19, jh, "jarglass", v=24, bevel=0.02)
-        cyl((x, 0.05, 0.36 + jh + 0.03), 0.2, 0.06, "black" if S < 5 else "gold", v=24)
-        rod((x + 0.19, 0.05, 0.55), (x + 0.28, 0.05, 0.75), 0.03, "black")
+        cyl((x, 0.05, 0.43 + jh * 0.35), 0.17, jh * 0.7, "veg", v=24)
+        cyl((x, 0.05, 0.43 + jh / 2), 0.19, jh, "jarglass", v=24, bevel=0.02)
+        cyl((x, 0.05, 0.43 + jh + 0.03), 0.2, 0.06, "black" if S < 5 else "gold", v=24)
+        rod((x + 0.19, 0.05, 0.62), (x + 0.28, 0.05, 0.82), 0.03, "black")
         for k in range(4):
-            a = k * math.pi / 2 + 0.4; sph((x + 0.09 * math.cos(a), 0.05 + 0.09 * math.sin(a), 0.45), (0.06, 0.012, 0.03), "steel")
+            a = k * math.pi / 2 + 0.4; sph((x + 0.09 * math.cos(a), 0.05 + 0.09 * math.sin(a), 0.52), (0.06, 0.012, 0.03), "steel")
+    box((0.5, -0.5, 0.17), (0.36, 0.3, 0.2), "wood", bevel=0.015)                     # veggie crate on the deck
     for k in range(4 + S):
-        a = k * 1.1; sph((0.55 + 0.1 * math.cos(a) * (k % 3), -0.5 + 0.08 * math.sin(a), 0.08 + 0.05 * (k % 2)), (0.09, 0.09, 0.08), "foliage2" if k % 2 else "foliage")
-    if S >= 3: cyl((-0.6, -0.45, 0.1), 0.1, 0.2, "red")
+        a = k * 1.1; sph((0.5 + 0.09 * math.cos(a) * (k % 3) * 0.8, -0.5 + 0.06 * math.sin(a), 0.29 + 0.04 * (k % 2)), (0.08, 0.08, 0.07), "foliage2" if k % 2 else "foliage")
+    if S >= 3: cyl((-0.5, -0.5, 0.17), 0.1, 0.2, "red")
     if S >= 4:
         rod((-0.4, 0.4, 0.3), (-0.6, 0.6, 0.6), 0.05, "copper"); spike((0.45, 0.35, 0.36), (1, 1, 0.5), 0.2, 0.04, "steel" if S == 4 else "gold")
     if S == 5: flag((0.65, 0.65, 0), 1.6)
-    mini_duck(Vector((0.55, 0.1, 0.0)), s=0.9, helmet=False, hat=None)
+    mini_duck(Vector((0.55, 0.1, 0.07)), s=0.9, helmet=False, hat=None)
 
 elif DEF == "stoveR":   # red syrup pot on charcoal stove
     HB = [0.6, 0.7, 0.8, 1.0, 1.1][S - 1]
