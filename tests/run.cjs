@@ -83,4 +83,8 @@ g('startRaid(1);var jar=R.buildings.find(b=>b.k==="honeyjar"),h0=jar.hp;damage(j
 ok(g('h0-h1===20&&h1-jar.hp===10'),'thief duck hits storages twice as hard');
 ok(g('Object.keys(U).filter(k=>!U[k].hidden).length')===19,'19 trainable troops');
 ok(g('Object.keys(U).every(k=>ART.troops[U[k].art])'),'every troop has its art');
+// every duck-house level must be affordable once storages are maxed for the level before it
+const reach=g(`(function(){var bad=[];for(var L=2;L<=MAX_LV;L++){var hl=L-1,c=B.hq.store*Math.pow(1.4,hl-1),n=maxCount('honeyjar',hl),jl=Math.min(MAX_LV,hl+1);c+=n*B.honeyjar.cap*Math.pow(1.7,jl-1);if(c<bCost('hq',L))bad.push(L);}return bad.join(',')})()`);
+ok(reach==='','every duck-house level is affordable'+(reach?' (not: '+reach+')':''));
+ok(g('maxCount("honeyjar",11)===5&&maxCount("veggiejar",11)===5'),'5 honey and 5 veggie jars at high levels');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

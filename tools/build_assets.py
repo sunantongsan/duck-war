@@ -68,13 +68,15 @@ for key, src in STATIC.items():
             p = os.path.join(R45, 'hq', f'hq{n}.png'); im = clean(Image.open(p).convert('RGBA')); F = im.size[0]; m = json.load(open(p + '_meta.json'))
             a = (im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F, m['pad'])
         else: a = load(os.path.join(R45, f'{src}{n}'), 'base.png')
-        if fit is None: fit = fit_of(a[0], a[3], size)
-        stages.append(save_sprite(a[0], a[1], a[2], a[3] / fit, f'b_{key}_{n}', size))
+        sf = fit_of(a[0], a[3], size)                       # every stage fills the same footprint: new shape, not a bigger building
+        if fit is None: fit = sf
+        if n == 3: fit3 = sf
+        stages.append(save_sprite(a[0], a[1], a[2], a[3] / sf, f'b_{key}_{n}', size))
     if key == 'hq':
         p = os.path.join(R45, 'hq', 'hq3_rubble.png'); im = clean(Image.open(p).convert('RGBA')); F = im.size[0]; m = json.load(open(os.path.join(R45, 'hq', 'hq3.png_meta.json')))
-        rub = save_sprite(im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F / fit, f'b_{key}_rubble', size)
+        rub = save_sprite(im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F / fit3, f'b_{key}_rubble', size)
     else:
-        a = load(os.path.join(R45, f'{src}3'), 'base_rubble.png'); rub = save_sprite(a[0], a[1], a[2], a[3] / fit, f'b_{key}_rubble', size)
+        a = load(os.path.join(R45, f'{src}3'), 'base_rubble.png'); rub = save_sprite(a[0], a[1], a[2], a[3] / fit3, f'b_{key}_rubble', size)
     ART['buildings'][key] = {'stages': stages, 'rubble': rub}
     print('building', key)
 
@@ -96,12 +98,13 @@ for key, src in TURRETS.items():
     stages = []; tfit = None
     for n in range(1, 6):
         d = os.path.join(R45, f'{src}{n}'); base, ox, oy, ppu, pad = load(d, 'base.png');
-        if tfit is None: tfit = fit_of(base, ppu, 2, .9)
+        sfit = fit_of(base, ppu, 2, .9)
+        if tfit is None: tfit = sfit
         rub = clean(Image.open(os.path.join(d, 'base_rubble.png')).convert('RGBA'))
         heads = []
         for i in range(16):
             h = np.array(Image.open(os.path.join(d, f'head_{i:02d}.png')).convert('RGBA')); h[h[..., 3] < 30] = 0; heads.append(Image.fromarray(h))
-        base, sox, soy = contact_shadow(base, ox, oy, 2 * ppu / tfit * .42)
+        base, sox, soy = contact_shadow(base, ox, oy, 2 * ppu / sfit * .42)
         pad_px = (base.size[0] - heads[0].size[0]) // 2
         def padded(im):
             o = Image.new('RGBA', base.size); o.alpha_composite(im, (pad_px, pad_px)); return o
@@ -125,7 +128,7 @@ for key, src in TURRETS.items():
         c, offx, offy = cell(base); sheet.alpha_composite(c, (4 * CELL, 2 * CELL))
         c2, _, _ = cell(rub); sheet.alpha_composite(c2, (5 * CELL, 2 * CELL))
         name = f't_{key}_{n}'; sheet.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
-        stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips})
+        stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips, 'fit': round(sfit, 3)})
     ART['turrets'][key] = {'stages': stages, 'fit': round(tfit, 3)}
     print('turret', key)
 

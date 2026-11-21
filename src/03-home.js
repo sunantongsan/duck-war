@@ -17,7 +17,7 @@ function hqLv() { var h = D.buildings.find(function (b) { return b.k === 'hq'; }
 function capacity(r) {
   if (r === 'coin') return Infinity;
   var c = r === 'syrup' ? 0 : B.hq.store * Math.pow(1.4, hqLv() - 1);
-  D.buildings.forEach(function (b) { var d = B[b.k]; if (d.kind === 'store' && d.store === r && !(b.up && b.lv === 0)) c += d.cap * Math.pow(1.6, b.lv - 1); });
+  D.buildings.forEach(function (b) { var d = B[b.k]; if (d.kind === 'store' && d.store === r && !(b.up && b.lv === 0)) c += d.cap * Math.pow(1.7, b.lv - 1); });   // grows fast enough that every duck-house level stays affordable
   return Math.round(c);
 }
 function rate(b) { var d = B[b.k]; return d.rate * Math.pow(1.4, b.lv - 1); }   // per hour
