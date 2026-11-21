@@ -54,7 +54,7 @@ function draw(dt) {
   if (ghost && screen === 'home') { var k2 = placing ? placing.k : moving.b.k, gb = { id: -1, k: k2, x: ghost.x, y: ghost.y, lv: placing ? 1 : moving.b.lv, aim: 2.36 }; list.push({ d: ghost.x + ghost.y + B[k2].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, sc); ctx.globalAlpha = 1; } }); }
   if (screen === 'home' && COLONEL && ART.troops.colonel) list.push({ d: COLONEL.x + COLONEL.y + .2, f: function () { drawTroop(COLONEL); } });
   if (screen === 'raid' && R) {
-    R.troops.forEach(function (t) { list.push({ d: t.x + t.y + .2, f: function () { drawTroop(t); } }); });
+    R.troops.forEach(function (t) { list.push({ d: t.x + t.y + .2 + (t.side === 'duck' && U[t.kind].air ? 6 : 0), f: function () { drawTroop(t); } }); });   // flyers are drawn above the buildings
   }
   list.sort(function (a, b) { return a.d - b.d; }).forEach(function (o) { o.f(); });
   drawSmoke(dt || 0);

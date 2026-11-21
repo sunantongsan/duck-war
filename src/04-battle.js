@@ -145,6 +145,7 @@ function troopTick(t, dt) {
     return;
   }
   if (u.burrow) return digTick(t, u, dt);
+  if (u.air) return flyTick(t, u, dt);
   // fight back against a cat guard close by
   var cat = alive(R.troops).filter(function (o) { return o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); })[0];
   if (cat) { var cd = Math.hypot(cat.x - t.x, cat.y - t.y); t.face = Math.atan2(cat.y - t.y, cat.x - t.x);
@@ -168,6 +169,13 @@ function troopTick(t, dt) {
   if (t.stuck > 1.2) { t.path.shift(); t.stuck = 0; t.lastWd = undefined; return; }
   step(t, wp.x, wp.y, u.speed, dt);
 }
+// Flyers: straight over walls and buildings to the target; only anti-air defenses can hit them, cats can't reach
+function flyTick(t, u, dt) {
+  if (!t.target || t.target.dead) { t.target = chooseTarget(t); if (!t.target) return; }
+  var c = center(t.target), d = rectDist(t.x, t.y, t.target);
+  if (d > u.range + .12) { var s = B[t.target.k].size; return step(t, u.range < 1 ? c.x : clamp(t.x, t.target.x, t.target.x + s), u.range < 1 ? c.y : clamp(t.y, t.target.y, t.target.y + s), u.speed, dt); }
+  t.face = Math.atan2(c.y - t.y, c.x - t.x); attack(t, t.target, u);
+}
 // Digger: travels underground in a straight line (walls don't matter, nothing can hit it), pops up at the target.
 function digTick(t, u, dt) {
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); if (!t.target) return; }
@@ -187,12 +195,13 @@ function step(t, x, y, speed, dt) {
 function attack(t, target, u) {
   if (t.cool > 0) return; t.cool = u.rate; t.atk = now();
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind);
+  if (u.hit === 'cracker') { sfx('shot'); shoot(t, target, 'cracker', dmg, u.splash, 5, t.x, t.y, 1.9); return; }
   if (u.hit === 'shot' || u.hit === 'fire') { sfx(u.hit === 'fire' ? 'fire' : 'shot'); shoot(t, target, u.hit === 'fire' ? 'chili' : 'pebble', dmg, u.splash, 9, t.x, t.y, .7); return; }
   t.pend = { target: target, dmg: dmg, left: .23, kind: u.hit }; if (t.side === 'cat') sfx('hiss');   // the blow lands when the swing does
 }
 function catTick(t, dt) {
   var c = CATS[t.kind], foe = null, fd = 4.5;
-  alive(R.troops).forEach(function (o) { if (o.side === 'duck' && !o.under) { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
+  alive(R.troops).forEach(function (o) { if (o.side === 'duck' && !o.under && !U[o.kind].air) { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
   if (foe) { t.face = Math.atan2(foe.y - t.y, foe.x - t.x); if (fd > c.range + .45) return step(t, foe.x, foe.y, c.speed, dt); return attack(t, foe, c); }
   if (!t.stroll || Math.hypot(t.stroll.x - t.x, t.stroll.y - t.y) < .1) { t.stroll = null;
     for (var i = 0; i < 12 && !t.stroll; i++) { var g = { x: t.home.x + (Math.random() - .5) * 7, y: t.home.y + (Math.random() - .5) * 7 }; if (!inBuilding(g.x, g.y)) t.stroll = g; }
@@ -219,8 +228,8 @@ function shotTick(s, dt) {
   s.x = s.fx + (s.tx - s.fx) * k; s.y = s.fy + (s.ty - s.fy) * k; s.z = s.fz * (1 - k) + Math.sin(k * Math.PI) * s.arc;
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
-      if ((s.from.k ? !o.k && o.side === 'duck' && !o.under : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
-    R.fx.push({ t: 'splat', x: s.tx, y: s.ty, life: .5, max: .5, kind: s.kind, size: s.splash }); sfx('splat'); }
+      if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
+    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: .5, max: .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
   else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }

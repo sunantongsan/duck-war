@@ -50,6 +50,7 @@ var SFX = {
   egg: function () { tone({ f: 220, f2: 90, type: 'sine', vol: .35, d: .18 }); noise({ type: 'lowpass', f: 600, vol: .15, d: .12 }); },
   water: function () { noise({ type: 'bandpass', f: 1800, f2: 3500, q: 3, vol: .12, d: .15 }); },
   thud: function () { tone({ f: 190, f2: 120, type: 'sine', vol: .2, d: .08 }); noise({ type: 'lowpass', f: 700, vol: .08, d: .05 }); },
+  cracker: function () { noise({ type: 'highpass', f: 1500, vol: .35, d: .06 }); noise({ type: 'highpass', f: 1500, vol: .3, d: .05, at: .07 }); noise({ type: 'lowpass', f: 900, vol: .3, d: .2, at: .02 }); },
   splat: function () { noise({ type: 'lowpass', f: 1200, f2: 300, vol: .3, d: .25 }); tone({ f: 120, f2: 60, type: 'sine', vol: .3, d: .25 }); },
   crash: function () { // a building falls: crunch, rumble, tumbling bits
     noise({ type: 'lowpass', f: 2500, f2: 150, vol: .5, a: .01, d: .9 }); tone({ f: 90, f2: 35, type: 'sine', vol: .55, d: .7 });

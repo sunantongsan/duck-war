@@ -4,7 +4,7 @@ from mathutils import Vector, Euler
 OUT = "/home/claude/duck"
 VARIANT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else "soldier"
 import mathutils
-HOVER = {"pig_rider": 0.38, "balloon": 0.6, "nurse": 0.55, "kite": 0.75, "prop": 0.5, "fan": 0.6, "plane": 0.7}.get(VARIANT, 0.0)
+HOVER = {"pig_rider": 0.38, "balloon": 0.0, "nurse": 0.55, "kite": 0.75, "prop": 0.5, "fan": 0.6, "plane": 0.7}.get(VARIANT, 0.0)
 FLYERS = ("nurse", "kite", "prop", "fan", "plane")
 EG = VARIANT in ("egret", "egret_guard")
 COL = VARIANT.startswith("colonel")
@@ -342,46 +342,41 @@ if VARIANT == "armor":
         o = bpy.context.active_object; o.scale = (0.325, 0.355, 0.7); o.rotation_euler = (math.radians(-12), 0, 0); finish(o, "leather", "body", 1)
 
 if VARIANT == "balloon":
-    BC = Vector((0, 0.02, 1.78))
+    # Built upright, flipped upside down at the end: a plastic shopping bag tied to the LEFT foot lifts the duck,
+    # which dangles head-down and drops firecrackers.
+    BC = Vector((0.12, 0.02, -1.25))
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=BC)
-    o = bpy.context.active_object; o.scale = (0.5, 0.42, 0.5)
+    o = bpy.context.active_object; o.scale = (0.48, 0.34, 0.56)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     for v in o.data.vertices:
         n = v.co.normalized()
-        w = mathutils.noise.noise(v.co * 5.0) * 0.03 + mathutils.noise.noise(v.co * 14.0) * 0.01
+        if v.co.z < -0.2: v.co.x *= 1.12; v.co.y *= 1.1                                    # boxy bottom of a shopping bag
+        w = mathutils.noise.noise(v.co * 6.0) * 0.045 + mathutils.noise.noise(v.co * 18.0) * 0.016   # crinkled plastic
         v.co += n * w
         if v.co.z > 0.25: f = 1 - (v.co.z - 0.25) * 1.6; v.co.x *= f; v.co.y *= f
     finish(o, "plastic", "bag", 1)
-    # bag handles + knot on top
-    for sx in (1, -1):
-        bpy.ops.mesh.primitive_torus_add(major_radius=0.17, minor_radius=0.035, location=(0.09 * sx, 0.02, 2.36))
-        o = bpy.context.active_object; o.scale = (0.8, 0.5, 1.2); o.rotation_euler = (math.radians(90), math.radians(25 * sx), 0); finish(o, "plastic", "bag", 1)
-    sphere((0, 0.02, 2.24), (0.09, 0.08, 0.07), "plastic", "bag")
-    # basket
-    bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.27, radius2=0.36, depth=0.30, location=(0, 0.02, 0.15), end_fill_type="TRIFAN")
-    o = bpy.context.active_object
-    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="DESELECT"); bpy.ops.object.mode_set(mode="OBJECT")
-    finish(o, "basket", "root", 0, smooth=False)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.36, minor_radius=0.03, location=(0, 0.02, 0.30))
-    finish(bpy.context.active_object, "basket", "root", 1)
-    for k in range(8):
-        a = k * math.pi / 4
-        cyl((0.315 * math.cos(a), 0.02 + 0.315 * math.sin(a), 0.15), 0.012, 0.28, "basket", "root")
-    # eggs in basket
-    for ex, ey in ((0.2, 0.15), (0.24, -0.05), (-0.22, 0.12)):
-        sphere((ex, ey, 0.33), (0.05, 0.05, 0.065), "egg", "root")
-    # strings bag -> basket rim
-    for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
-        top = BC + Vector((0.16 * sx, 0.14 * sy, -0.38)); bot = Vector((0.27 * sx, 0.02 + 0.25 * sy, 0.31))
-        pts = [bot + (top - bot) * (i / 9) for i in range(10)]
-        st = tube([tuple(p) for p in pts], 0.007, "string")
-        def wf(co, top=top, bot=bot):
-            t = max(0.0, min(1.0, (co - bot).dot(top - bot) / (top - bot).length_squared))
-            return {"root": 1 - t, "bag": t}
-        CUSTOM.append((st, wf))
-    # egg in hand (bomb) on left wing, hidden except attack
-    sphere((0.34, -0.17, 0.47), (0.055, 0.055, 0.07), "egg", "egg")
-    EXTRA_BONES.append(("bag", BC - Vector((0, 0, 0.42)), BC, "root"))
+    for sx in (1, -1):   # the two bag handles, gathered towards the knot
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.04, location=(BC.x + 0.13 * sx, 0.02, BC.z + 0.62))
+        o = bpy.context.active_object; o.scale = (0.75, 0.45, 1.35); o.rotation_euler = (math.radians(90), math.radians(30 * sx), 0); finish(o, "plastic", "bag", 1)
+    # printed red band, like a market shopping bag
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.43, minor_radius=0.035, location=(BC.x, 0.02, BC.z - 0.05))
+    o = bpy.context.active_object; o.scale = (1.0, 0.8, 1.0); finish(o, "red", "bag", 1)
+    sphere((BC.x, 0.02, BC.z + 0.84), (0.09, 0.08, 0.07), "plastic", "bag")
+    # string: knot on the bag -> wrapped round the left ankle
+    top = Vector((BC.x, 0.02, BC.z + 0.84)); bot = Vector((0.12, 0.0, 0.05))
+    pts = [bot + (top - bot) * (i / 9) + Vector((0.03 * math.sin(i * 0.9), 0, 0)) for i in range(10)]
+    st = tube([tuple(p) for p in pts], 0.008, "string")
+    def wf(co, top=top, bot=bot):
+        t = max(0.0, min(1.0, (co - bot).dot(top - bot) / (top - bot).length_squared))
+        return {"leg.L": 1 - t, "bag": t}
+    CUSTOM.append((st, wf))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.05, minor_radius=0.012, location=(0.12, 0.0, 0.07))
+    finish(bpy.context.active_object, "string", "leg.L", 1)
+    # firecracker held in the left wing, shown while attacking
+    cyl((0.34, -0.17, 0.47), 0.04, 0.16, "red", "egg")
+    cyl((0.34, -0.17, 0.56), 0.042, 0.02, "gold", "egg")
+    along("cyl", (0.34, -0.17, 0.57), (0.36, -0.19, 0.66), 0.006, 0, "string", "egg")
+    EXTRA_BONES.append(("bag", BC + Vector((0, 0, 0.8)), BC, "leg.L"))
     EXTRA_BONES.append(("egg", Vector((0.34, -0.17, 0.45)), Vector((0.34, -0.17, 0.55)), "wing.L"))
 
 # ---------- colonel gear ----------
@@ -1125,8 +1120,8 @@ if VARIANT == "balloon":
     new_action("Walk")
     for f in range(0, 25, 3):
         ph = 2 * math.pi * f / 24
-        full(f + 1, {"root": {"l": (0, 0, 0.06 * math.sin(ph)), "r": (10, 0, 4 * math.sin(ph))}, "bag": {"r": (-14 + 4 * math.sin(ph), 0, 0), "s": (1 + 0.05 * math.sin(ph * 2), 1 - 0.06 * math.sin(ph * 2), 1 + 0.05 * math.sin(ph * 2))},
-                     "body": {"r": (6, 0, 6 * math.sin(ph))}, "leg.L": {"r": (40 * math.sin(ph * 2), 0, 0)}, "leg.R": {"r": (-40 * math.sin(ph * 2), 0, 0)},
+        full(f + 1, {"root": {"l": (0, 0, 0.06 * math.sin(ph)), "r": (10, 0, 4 * math.sin(ph))}, "bag": {"r": (-6 + 3 * math.sin(ph), 0, 0), "s": (1 + 0.05 * math.sin(ph * 2), 1 - 0.06 * math.sin(ph * 2), 1 + 0.05 * math.sin(ph * 2))},
+                     "body": {"r": (6, 0, 6 * math.sin(ph))}, "leg.L": {"r": (5 * math.sin(ph * 2), 0, 0)}, "leg.R": {"r": (-35 * math.sin(ph * 2), 0, 0)},
                      "wing.L": {"r": (0, 0, -30 - 25 * abs(math.sin(ph * 2)))}, "wing.R": {"r": (0, 0, 30 + 25 * abs(math.sin(ph * 2)))}})
 
 if VARIANT in FLYERS:
@@ -1172,6 +1167,20 @@ DD(20, lying(0.32, (1, 1, 1), -90, -80, sm=(0.45, 0.45, 0.45)), P)
 DD(24, lying(0.32, (1, 1, 1), -85, -85, rs=(0.5, 0.5, 0.5), sm=(1.1, 1.1, 1.15)), P)
 DD(27, lying(0.32, (1, 1, 1), -85, -85, rs=(0.01, 0.01, 0.01), sm=(1.35, 1.35, 1.5)), P)
 DD(32, lying(0.32, (1, 1, 1), -85, -85, rs=(0.01, 0.01, 0.01), sm=(0.01, 0.01, 0.01)), P)
+
+if VARIANT == "balloon":
+    # Death: the bag pops, the duck drops (local +z is down once flipped), poofs into smoke
+    bpy.data.actions.remove(bpy.data.actions["Death"]); new_action("Death")
+    full(1, {})
+    full(3, {"bag": {"s": (1.4, 1.35, 1.4)}, "body": {"s": (0.85, 1.2, 0.85)}, "jaw": {"r": (35, 0, 0)}, "wing.L": {"r": (0, 0, -60)}, "wing.R": {"r": (0, 0, 60)}})
+    full(5, {"bag": {"s": (0.01, 0.01, 0.01)}, "body": {"s": (0.9, 1.15, 0.9)}, "jaw": {"r": (35, 0, 0)}, "root": {"l": (0, 0, 0.25)}, "wing.L": {"r": (0, 0, -80)}, "wing.R": {"r": (0, 0, 80)}})
+    full(9, {"bag": {"s": (0.01, 0.01, 0.01)}, "body": {"s": (1.15, 0.85, 1.15)}, "root": {"l": (0, 0, 1.25)}, "wing.L": {"r": (0, 0, -70)}, "wing.R": {"r": (0, 0, 70)}})
+    full(12, {"bag": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 1.2)}, "smoke": {"s": (0.6, 0.6, 0.6)}})
+    full(16, {"bag": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 1.25), "s": (0.4, 0.4, 0.4)}, "smoke": {"s": (1.2, 1.2, 1.25)}})
+    full(20, {"bag": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 1.25), "s": (0.01, 0.01, 0.01)}, "smoke": {"s": (0.01, 0.01, 0.01)}})
+    # flip the whole rig head-down and lift it so the bag floats above
+    arm.rotation_euler = (0, math.pi, 0); arm.location = (0, 0, 1.75)
+    bpy.context.view_layer.update()
 
 # ---------- export GLB ----------
 arm.animation_data.action = bpy.data.actions["Idle"]

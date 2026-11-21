@@ -40,6 +40,8 @@ var U = {
   nurse:  { name: 'เป็ดพยาบาล',       art: 'nurse',  h: 1.0,  space: 4, cost: 500, res: 'veggie', time: 40, hp: 150, dmg: 0,  heal: 18, rate: 1, range: 2.5, speed: 1.4, pref: 'heal', hit: 'heal', unlock: 6 },
   chef:   { name: 'เป็ดเชฟพริก',       art: 'chef',   h: 1.0,  space: 4, cost: 600, res: 'veggie', time: 40, hp: 75,  dmg: 50, rate: 1.5, range: 3, speed: 1.4, pref: 'any', hit: 'fire', splash: 1, unlock: 7 },
   pig:    { name: 'เป็ดขี่หมู',        art: 'pig',    h: 1.2,  space: 5, cost: 80,  res: 'syrup',  time: 45, hp: 280, dmg: 40, rate: 1,  range: 0.6, speed: 2.0, pref: 'defense', hit: 'smash', jump: true, unlock: 8 },
+  balloon: { name: 'เป็ดบอลลูนถุงก๊อบแก๊บ', art: 'balloon', h: 2.7, space: 5, cost: 400, res: 'veggie', time: 35, hp: 260, dmg: 72, rate: 3, range: 0.35, speed: 0.85, pref: 'defense', hit: 'cracker', splash: 1.2, air: true, unlock: 6 },   // hangs from a shopping bag, drops firecrackers
+  plane:  { name: 'เป็ดขี่จรวดพับ',      art: 'plane',  h: 1.25, space: 2, cost: 90,  res: 'veggie', time: 10, hp: 60,  dmg: 15, rate: 1,  range: 2.5, speed: 2.4, pref: 'any', hit: 'shot', air: true, unlock: 7 },   // fast paper-plane flyer
   dog:    { name: 'หมาดัลเมเชียน',     art: 'dog',    h: 1.45, space: 10, cost: 300, res: 'syrup', time: 90, hp: 1100, dmg: 70, rate: 1.2, range: 0.7, speed: 1.1, pref: 'any', hit: 'bite', unlock: 9 }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });

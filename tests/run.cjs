@@ -43,6 +43,14 @@ for (const lv of [2,6,12]) { g('D.army={fork:5};startRaid('+lv+');');
   const inside=g('(function(){var hq=R.buildings.find(b=>b.k==="hq");return [hq.x-1.5,hq.y+1.5].concat([hq.x+5,hq.y+1.5])})()');
   ok(g('!canDeploy('+inside[0]+','+inside[1]+')&&!canDeploy('+inside[2]+','+inside[3]+')&&canDeploy(1,1)&&canDeploy('+(40-1)+',20)'),'level '+lv+': no landing inside the walls, fine outside'); }
 ok(g('MAP')===40,'map is 40x40');
+// flyers: over the walls, only anti-air can hit them
+g('D.army={balloon:6,plane:6};startRaid(6);var wallHp2=R.buildings.filter(b=>b.k==="wall").reduce((a,b)=>a+b.hp,0);R.pick="balloon";for(var i=0;i<6;i++)deploy(2,15+i);R.pick="plane";for(var i=0;i<6;i++)deploy(3,15+i);');
+for(let i=0;i<60*20;i++)g('raidTick(0.05)');
+ok(g('R.buildings.filter(b=>b.k==="wall").reduce((a,b)=>a+b.hp,0)===wallHp2'),'flyers cross walls without breaking them');
+ok(g('R.buildings.some(b=>b.hp<b.max&&B[b.k].kind==="defense")'),'balloons bomb defenses');
+g('D.army={balloon:3};startRaid(1);R.pick="balloon";for(var i=0;i<3;i++)deploy(2,15+i);');
+for(let i=0;i<40*20;i++)g('raidTick(0.05)');
+ok(g('R.troops.filter(t=>t.kind==="balloon").every(t=>t.hp===t.max)'),'ground-only defenses and cats never hit flyers');
 // diggers tunnel under the walls and can't be shot while underground
 g('D.army={digger:10};startRaid(6);R.pick="digger";for(var i=0;i<10;i++)deploy(2,15+i);var wallHp=R.buildings.filter(b=>b.k==="wall").reduce((a,b)=>a+b.hp,0),sawUnder=false,hitUnder=false;');
 for(let i=0;i<40*20;i++){g('raidTick(0.05);R.troops.forEach(t=>{if(t.under){sawUnder=true;if(t.hp<t.max&&!t.wasHit)hitUnder=true;}})');}
