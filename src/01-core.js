@@ -5,7 +5,7 @@ var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
 var now = function () { return Date.now(); };
 var TEST = !!(window.DuckContent && (window.DuckContent.channel === 'test' || /test/.test(window.DuckContent.label || ''))) || /[?&]test/.test(location.search);
 var ISO = 0.75, H = Math.SQRT1_2, ZUP = 0.661;           // sin/cos of the 48.6° camera elevation
-var MAP = 24;                                            // the base is MAP x MAP tiles
+var MAP = 40;                                            // the base is MAP x MAP tiles (roomy, like Clash's 44)
 
 var canvas = $('world'), ctx = canvas.getContext('2d');
 var cam = { x: 0, y: 0, s: 40 };                         // s = screen px per world unit (one tile edge)
@@ -23,8 +23,8 @@ function toWorld(sx, sy) {
   return { x: (a + b) / 2, y: (b - a) / 2 };
 }
 function centerCamera(scale) {
-  cam.s = scale || clamp(Math.min(view.w / (MAP * 1.0), view.h / (MAP * 0.55)), 22, 90); cam.x = cam.y = 0;
-  var c = toScreen(MAP / 2, MAP / 2); cam.x += view.w / 2 - c.x; cam.y += view.h / 2 - c.y;
+  cam.s = scale || clamp(Math.min(view.w / 24, view.h / 13.2), 22, 90); cam.x = cam.y = 0;
+  var f = arguments[1] || { x: MAP / 2, y: MAP / 2 }, c = toScreen(f.x, f.y); cam.x += view.w / 2 - c.x; cam.y += view.h / 2 - c.y;
 }
 
 // ---------- images ----------
@@ -48,7 +48,7 @@ canvas.addEventListener('pointermove', function (e) {
   if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (!gesture) return;
   if (gesture.pinch) {
-    var s = clamp(gesture.s * dist2() / gesture.pinch, 14, 140), m = gesture.mid, r = rect();
+    var s = clamp(gesture.s * dist2() / gesture.pinch, 11, 140), m = gesture.mid, r = rect();
     var wx = toWorld(m.x - r.left, m.y - r.top); cam.s = s; var after = toScreen(wx.x, wx.y);
     cam.x += m.x - r.left - after.x; cam.y += m.y - r.top - after.y; dirty = true; return;
   }
@@ -68,7 +68,7 @@ function endPointer(e) {
 canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
 canvas.addEventListener('wheel', function (e) {
   e.preventDefault(); var r = rect(), w = toWorld(e.clientX - r.left, e.clientY - r.top);
-  cam.s = clamp(cam.s * (e.deltaY < 0 ? 1.1 : 0.9), 14, 140); var a = toScreen(w.x, w.y);
+  cam.s = clamp(cam.s * (e.deltaY < 0 ? 1.1 : 0.9), 11, 140); var a = toScreen(w.x, w.y);
   cam.x += e.clientX - r.left - a.x; cam.y += e.clientY - r.top - a.y; dirty = true;
 }, { passive: false });
 function rect() { return canvas.getBoundingClientRect(); }

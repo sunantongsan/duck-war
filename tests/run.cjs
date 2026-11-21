@@ -38,6 +38,11 @@ for(let i=0;i<120*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
 const p4=g('destruction()');ok(p4>=0.9,'crowded raid on level 4 reaches '+Math.round(p4*100)+'% (needs 90%)');
 ok(g('!R.troops.some(t=>!t.dead&&t.attacking&&t.target&&!t.target.dead&&t.target.k&&rectDist(t.x,t.y,t.target)>(U[t.k].range+0.6))'),'no troop hits a building from out of range');
 ok(g('(selectBuilding(null),true)'),'deselect building');
+// landing zone: only outside the wall ring
+for (const lv of [2,6,12]) { g('D.army={fork:5};startRaid('+lv+');');
+  const inside=g('(function(){var hq=R.buildings.find(b=>b.k==="hq");return [hq.x-1.5,hq.y+1.5].concat([hq.x+5,hq.y+1.5])})()');
+  ok(g('!canDeploy('+inside[0]+','+inside[1]+')&&!canDeploy('+inside[2]+','+inside[3]+')&&canDeploy(1,1)&&canDeploy('+(40-1)+',20)'),'level '+lv+': no landing inside the walls, fine outside'); }
+ok(g('MAP')===40,'map is 40x40');
 // production boost: x2 only for the boosted hour, coins charged
 g('D.res.honey=0;var pm=D.buildings.find(b=>b.k==="honeypump");pm.up=null;delete pm.boost;D.t=Date.now()-3600000;homeTick();');
 const base=g('D.res.honey');

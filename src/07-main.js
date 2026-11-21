@@ -40,13 +40,17 @@ function draw(dt) {
   var sc = scene(), list = [];
   if (screen === 'raid' && R && !R.over && R.pick) { // red zone where ducks can't land
     var flash = R.redFlash && now() - R.redFlash < 700;
-    sc.buildings.forEach(function (b) { if (!b.dead) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, flash ? 'rgba(255,60,60,.22)' : 'rgba(255,80,80,.10)', null); });
+    var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
+    for (var ty = 0; ty < MAP; ty++) for (var tx = 0; tx < MAP; tx++) if (enc[ty * MAP + tx]) tileDiamond(tx, ty, 1, red, null);   // inside the walls
+    sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
   }
   if (screen === 'home' && selected) tileDiamond(selected.x, selected.y, B[selected.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)');
   var ghost = placing || moving;
   if (screen === 'home' && ghost) { var gk = placing ? placing.k : moving.b.k, ok = footprintFree(gk, ghost.x, ghost.y, moving && moving.b.id);
     tileDiamond(ghost.x, ghost.y, B[gk].size, ok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', ok ? '#5fe07a' : '#ff5a5a'); }
-  sc.buildings.forEach(function (b) { if (moving && moving.b === b) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
+  // rubble lies flat on the ground: drawn first and faded, so ducks walk over it instead of under it
+  sc.buildings.forEach(function (b) { if (b.dead && b.k !== 'wall') { ctx.globalAlpha = .62; drawBuilding(b, sc); ctx.globalAlpha = 1; } });
+  sc.buildings.forEach(function (b) { if (b.dead || (moving && moving.b === b)) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
   if (ghost && screen === 'home') { var k2 = placing ? placing.k : moving.b.k, gb = { id: -1, k: k2, x: ghost.x, y: ghost.y, lv: placing ? 1 : moving.b.lv, aim: 2.36 }; list.push({ d: ghost.x + ghost.y + B[k2].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, sc); ctx.globalAlpha = 1; } }); }
   if (screen === 'home' && COLONEL && ART.troops.colonel) list.push({ d: COLONEL.x + COLONEL.y + .2, f: function () { drawTroop(COLONEL); } });
   if (screen === 'raid' && R) {
@@ -60,8 +64,8 @@ function draw(dt) {
   }
 }
 function boot() {
-  D = loadSave() || newGame(); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades
-  fit(); centerCamera(); homeTick(); hud();
+  D = migrateSave(loadSave() || newGame()); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades
+  fit(); centerCamera(0, hqCenter()); homeTick(); hud();
   $('btn-build').onclick = buildMenu; $('btn-army').onclick = armyMenu; $('btn-attack').onclick = attackMenu;
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };

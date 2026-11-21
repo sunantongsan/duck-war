@@ -8,7 +8,7 @@ var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
 var now = function () { return Date.now(); };
 var TEST = !!(window.DuckContent && (window.DuckContent.channel === 'test' || /test/.test(window.DuckContent.label || ''))) || /[?&]test/.test(location.search);
 var ISO = 0.75, H = Math.SQRT1_2, ZUP = 0.661;           // sin/cos of the 48.6° camera elevation
-var MAP = 24;                                            // the base is MAP x MAP tiles
+var MAP = 40;                                            // the base is MAP x MAP tiles (roomy, like Clash's 44)
 
 var canvas = $('world'), ctx = canvas.getContext('2d');
 var cam = { x: 0, y: 0, s: 40 };                         // s = screen px per world unit (one tile edge)
@@ -26,8 +26,8 @@ function toWorld(sx, sy) {
   return { x: (a + b) / 2, y: (b - a) / 2 };
 }
 function centerCamera(scale) {
-  cam.s = scale || clamp(Math.min(view.w / (MAP * 1.0), view.h / (MAP * 0.55)), 22, 90); cam.x = cam.y = 0;
-  var c = toScreen(MAP / 2, MAP / 2); cam.x += view.w / 2 - c.x; cam.y += view.h / 2 - c.y;
+  cam.s = scale || clamp(Math.min(view.w / 24, view.h / 13.2), 22, 90); cam.x = cam.y = 0;
+  var f = arguments[1] || { x: MAP / 2, y: MAP / 2 }, c = toScreen(f.x, f.y); cam.x += view.w / 2 - c.x; cam.y += view.h / 2 - c.y;
 }
 
 // ---------- images ----------
@@ -51,7 +51,7 @@ canvas.addEventListener('pointermove', function (e) {
   if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (!gesture) return;
   if (gesture.pinch) {
-    var s = clamp(gesture.s * dist2() / gesture.pinch, 14, 140), m = gesture.mid, r = rect();
+    var s = clamp(gesture.s * dist2() / gesture.pinch, 11, 140), m = gesture.mid, r = rect();
     var wx = toWorld(m.x - r.left, m.y - r.top); cam.s = s; var after = toScreen(wx.x, wx.y);
     cam.x += m.x - r.left - after.x; cam.y += m.y - r.top - after.y; dirty = true; return;
   }
@@ -71,7 +71,7 @@ function endPointer(e) {
 canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
 canvas.addEventListener('wheel', function (e) {
   e.preventDefault(); var r = rect(), w = toWorld(e.clientX - r.left, e.clientY - r.top);
-  cam.s = clamp(cam.s * (e.deltaY < 0 ? 1.1 : 0.9), 14, 140); var a = toScreen(w.x, w.y);
+  cam.s = clamp(cam.s * (e.deltaY < 0 ? 1.1 : 0.9), 11, 140); var a = toScreen(w.x, w.y);
   cam.x += e.clientX - r.left - a.x; cam.y += e.clientY - r.top - a.y; dirty = true;
 }, { passive: false });
 function rect() { return canvas.getBoundingClientRect(); }
@@ -148,12 +148,17 @@ var RES = { honey: { name: 'น้ำผึ้ง', color: '#ffc93a' }, veggie: 
 var D = null;
 function newGame() {
   var d = { v: 1, res: { honey: 1200, veggie: 1200, syrup: 0, coin: TEST ? 1000000 : 250 }, buildings: [], army: {}, queue: [], builders: 2, next: 1, t: now(), raid: 1, stars: 0, name: 'ฐานเป็ด' };
-  function add(k, x, y, lv) { d.buildings.push({ id: d.next++, k: k, x: x, y: y, lv: lv || 1 }); }
+  function add(k, x, y, lv) { d.buildings.push({ id: d.next++, k: k, x: x + 8, y: y + 8, lv: lv || 1 }); }   // laid out round the middle of the 40x40 map
   add('hq', 10, 10); add('honeypump', 6, 9); add('veggieblender', 15, 10); add('honeyjar', 7, 13); add('veggiejar', 14, 14);
   add('camp', 5, 15); add('barracks', 10, 15); add('slingshot', 11, 6);
-  d.army = { fork: 8 };
+  d.army = { fork: 8 }; d.map = MAP;
   return d;
 }
+function migrateSave(d) { // saves from the 24x24 map: move the base to the middle of the bigger one
+  if (!d.map) { d.buildings.forEach(function (b) { b.x += 8; b.y += 8; }); d.map = MAP; }
+  return d;
+}
+function hqCenter() { var h = D.buildings.find(function (b) { return b.k === 'hq'; }); return h ? { x: h.x + 1.5, y: h.y + 1.5 } : { x: MAP / 2, y: MAP / 2 }; }
 function hqLv() { var h = D.buildings.find(function (b) { return b.k === 'hq'; }); return h ? h.lv : 1; }
 function capacity(r) {
   if (r === 'coin') return Infinity;
@@ -288,12 +293,12 @@ var COLONEL_LINES = ['ทหารเป็ด! เตรียมพร้อ�
 var R = null;   // the running raid
 function rng(seed) { var s = seed >>> 0 || 1; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function catBase(n) {
-  var r = rng(n * 7919 + 13), hq = Math.min(10, 1 + Math.floor((n + 1) / 2)), list = [], id = 1;
+  var C = MAP / 2 - 1, r = rng(n * 7919 + 13), hq = Math.min(10, 1 + Math.floor((n + 1) / 2)), list = [], id = 1;
   function lv(base) { return clamp(Math.round(base + (r() - .5) * 2), 1, MAX_LV); }
   function free(k, x, y) { var s = B[k].size; if (x < 2 || y < 2 || x + s > MAP - 2 || y + s > MAP - 2) return false; return !list.some(function (b) { var t = B[b.k].size; return x < b.x + t + (b.k === 'wall' || k === 'wall' ? 0 : 0) && b.x < x + s && y < b.y + t && b.y < y + s; }); }
   function put(k, x, y, l) { if (!free(k, x, y)) return false; list.push({ id: id++, k: k, x: x, y: y, lv: l || lv(hq) }); return true; }
-  function scatter(k, l, rad) { for (var i = 0; i < 60; i++) { var a = r() * 6.28, d = rad[0] + r() * (rad[1] - rad[0]); if (put(k, Math.round(11 + Math.cos(a) * d), Math.round(11 + Math.sin(a) * d), l)) return; } }
-  put('hq', 11, 11, hq);
+  function scatter(k, l, rad) { for (var i = 0; i < 60; i++) { var a = r() * 6.28, d = rad[0] + r() * (rad[1] - rad[0]); if (put(k, Math.round(C + Math.cos(a) * d), Math.round(C + Math.sin(a) * d), l)) return; } }
+  put('hq', C, C, hq);
   var def = ['slingshot', 'slingshot', 'boxtower', 'slingshot', 'mortar', 'boxtower', 'watergun', 'chili', 'mortar', 'boxtower', 'slingshot'];
   var nDef = Math.min(def.length, 1 + Math.floor(n * .8));
   for (var i = 0; i < nDef; i++) scatter(def[i], lv(hq - 1), [3, 5.5]);
@@ -301,7 +306,7 @@ function catBase(n) {
   if (hq >= 5) scatter('syrupjar', lv(hq - 2), [2, 4]);
   // wall ring around the core
   if (n >= 2) { var ring = n >= 6 ? 6 : 5, wl = clamp(Math.floor(n / 3) + 1, 1, MAX_LV);
-    for (var t = -ring; t <= ring; t++) [[11 + t, 11 - ring], [11 + t, 11 + ring + 1], [11 - ring, 11 + t], [11 + ring + 1, 11 + t]].forEach(function (p) { put('wall', p[0] + 1, p[1], wl); }); }
+    for (var t = -ring; t <= ring; t++) [[C + 1 + t, C + 1 - ring], [C + 1 + t, C + 2 + ring], [C + 1 - ring, C + 1 + t], [C + 2 + ring, C + 1 + t], [C + 2 + ring, C + 2 + ring]].forEach(function (p) { put('wall', p[0], p[1], wl); }); }
   ['honeypump', 'veggieblender', 'honeypump', 'veggieblender', 'camp', 'barracks'].forEach(function (k, j) { if (j < 2 + Math.floor(n / 2)) scatter(k, lv(hq - 1), [7, 10]); });
   var loot = { honey: 2500 + n * 1800, veggie: 2500 + n * 1800, syrup: n >= 8 ? n * 40 : 0 };
   var cats = n >= 3 ? [n >= 10 ? 'cat_king' : n >= 6 ? 'cat_pan' : 'cat_spatula'] : [];
@@ -332,13 +337,25 @@ function freeSpot(cx, cy, r, seed) { // open ground near (cx, cy), so a guard is
 function rectDist(px, py, b) { var s = B[b.k].size, dx = Math.max(b.x - px, 0, px - (b.x + s)), dy = Math.max(b.y - py, 0, py - (b.y + s)); return Math.hypot(dx, dy); }
 function center(b) { var s = B[b.k].size / 2; return { x: b.x + s, y: b.y + s }; }
 function alive(list) { return list.filter(function (o) { return !o.dead; }); }
+// Ducks land only outside the walls: tiles fenced in by walls are off limits, and so is one tile round every building.
+function enclosed() {
+  if (R.enc) return R.enc;   // fixed when the raid starts: a breach doesn't open the inside for landing
+  var wall = new Uint8Array(MAP * MAP), seen = new Uint8Array(MAP * MAP), q = [], n = 0;
+  R.buildings.forEach(function (b) { if (b.k === 'wall' && !b.dead && b.x >= 0 && b.y >= 0 && b.x < MAP && b.y < MAP) { wall[b.y * MAP + b.x] = 1; n++; } });
+  for (var i = 0; i < MAP; i++) [i, (MAP - 1) * MAP + i, i * MAP, i * MAP + MAP - 1].forEach(function (c) { if (!wall[c] && !seen[c]) { seen[c] = 1; q.push(c); } });
+  while (q.length) { var c = q.pop(), x = c % MAP, y = (c / MAP) | 0;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var nx = x + d[0], ny = y + d[1]; if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) return; var k = ny * MAP + nx; if (!wall[k] && !seen[k]) { seen[k] = 1; q.push(k); } }); }
+  var enc = new Uint8Array(MAP * MAP); for (var k = 0; k < MAP * MAP; k++) enc[k] = !seen[k] ? 1 : 0;
+  R.enc = enc; return enc;
+}
 function canDeploy(x, y) {
   if (x < 0.3 || y < 0.3 || x > MAP - .3 || y > MAP - .3) return false;
-  return !R.buildings.some(function (b) { return !b.dead && rectDist(x, y, b) < 1; });   // red zone: one tile around every building
+  if (enclosed()[Math.floor(y) * MAP + Math.floor(x)]) return false;
+  return !R.buildings.some(function (b) { return !b.dead && b.k !== 'wall' && rectDist(x, y, b) < 1; });
 }
 function deploy(x, y) {
   var k = R.pick; if (!k || !(R.army[k] > 0) || R.over) return false;
-  if (!canDeploy(x, y)) { R.redFlash = now(); toast('วางในเขตสีแดงไม่ได้'); return false; }
+  if (!canDeploy(x, y)) { R.redFlash = now(); toast('ปล่อยทหารได้แค่นอกกำแพง และห่างอาคาร 1 ช่อง'); return false; }
   var u = U[k]; R.army[k]--; R.deployed++; R.started = true;
   R.troops.push({ side: 'duck', kind: k, x: x, y: y, hp: uHp(k), max: uHp(k), cool: 0.2, dir: 2, born: now() });
   R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5 });
@@ -353,11 +370,14 @@ function grid() {
 }
 function findPath(t, target, range) {
   var g = grid(), sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1), N = MAP * MAP;
-  var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), open = [sy * MAP + sx]; cost[open[0]] = 0;
+  var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), hk = [], hn = [];   // binary heap of (cost, cell)
+  function push(n, k) { hk.push(k); hn.push(n); var i = hk.length - 1; while (i) { var p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hn[i] = hn[p]; i = p; } hk[i] = k; hn[i] = n; }
+  function pop() { var top = hn[0], lk = hk.pop(), ln = hn.pop(), L = hk.length; if (L) { var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i, mk = lk;
+      if (l < L && hk[l] < mk) { m = l; mk = hk[l]; } if (r < L && hk[r] < mk) m = r; if (m === i) break; hk[i] = hk[m]; hn[i] = hn[m]; i = m; } hk[i] = lk; hn[i] = ln; } return top; }
+  var start = sy * MAP + sx; cost[start] = 0; push(start, 0);
   var goal = -1;
-  while (open.length) {
-    var bi = 0; for (var i = 1; i < open.length; i++) if (cost[open[i]] < cost[open[bi]]) bi = i;
-    var c = open.splice(bi, 1)[0]; if (done[c]) continue; done[c] = 1;
+  while (hk.length) {
+    var c = pop(); if (done[c]) continue; done[c] = 1;
     var cx = c % MAP, cy = (c / MAP) | 0;
     if (rectDist(cx + .5, cy + .5, target) <= range + .45) { goal = c; break; }
     for (var d = 0; d < 8; d++) {
@@ -365,7 +385,7 @@ function findPath(t, target, range) {
       var n = ny * MAP + nx, occ = g[n], step = d < 4 ? 1 : 1.414;
       if (occ) { var ob = R.buildings[occ - 1]; if (ob === target) continue; if (ob.k !== 'wall') continue; step += 6 + ob.hp / 60; }
       if (d >= 4 && (g[cy * MAP + nx] && R.buildings[g[cy * MAP + nx] - 1].k !== 'wall' || g[ny * MAP + cx] && R.buildings[g[ny * MAP + cx] - 1].k !== 'wall')) continue;
-      if (cost[c] + step < cost[n]) { cost[n] = cost[c] + step; prev[n] = c; open.push(n); }
+      if (cost[c] + step < cost[n]) { cost[n] = cost[c] + step; prev[n] = c; push(n, cost[n]); }
     }
   }
   if (goal < 0) return null;
@@ -689,8 +709,9 @@ function icon(r) { return '<i class="ic ic-' + r + '"></i>'; }
 function costTag(r, n) { return '<span class="cost' + (D.res[r] >= n ? '' : ' short') + '">' + icon(r) + fmt(n) + '</span>'; }
 function closeSheet() { $('sheet').classList.remove('open'); $('sheet').innerHTML = ''; }
 function openSheet(title, body) {
-  var s = $('sheet'); s.innerHTML = ''; var head = h('div', 'sheet-head', '<b>' + title + '</b>'); var x = h('button', 'x', '✕'); x.onclick = closeSheet; head.appendChild(x);
-  s.appendChild(head); var b = h('div', 'sheet-body'); s.appendChild(b); body(b); s.classList.add('open');
+  var s = $('sheet'), old = s.querySelector('.sheet-body'), keep = s.classList.contains('open') && s.dataset.title === title ? (old ? old.scrollTop : 0) : 0;   // refreshing the same sheet keeps its scroll
+  s.dataset.title = title; s.innerHTML = ''; var head = h('div', 'sheet-head', '<b>' + title + '</b>'); var x = h('button', 'x', '✕'); x.onclick = closeSheet; head.appendChild(x);
+  s.appendChild(head); var b = h('div', 'sheet-body'); s.appendChild(b); body(b); s.classList.add('open'); b.scrollTop = keep;
 }
 
 // ---------- HUD ----------
@@ -826,7 +847,7 @@ function showResult() {
     var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = goHome; body.appendChild(b);
   });
 }
-function goHome() { closeSheet(); screen = 'home'; R = null; centerCamera(); hud(); dirty = true; }
+function goHome() { closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
 
 // ---- src/07-main.js ----
 // Duck War — start-up, the main loop, and what taps do on each screen.
@@ -871,13 +892,17 @@ function draw(dt) {
   var sc = scene(), list = [];
   if (screen === 'raid' && R && !R.over && R.pick) { // red zone where ducks can't land
     var flash = R.redFlash && now() - R.redFlash < 700;
-    sc.buildings.forEach(function (b) { if (!b.dead) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, flash ? 'rgba(255,60,60,.22)' : 'rgba(255,80,80,.10)', null); });
+    var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
+    for (var ty = 0; ty < MAP; ty++) for (var tx = 0; tx < MAP; tx++) if (enc[ty * MAP + tx]) tileDiamond(tx, ty, 1, red, null);   // inside the walls
+    sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
   }
   if (screen === 'home' && selected) tileDiamond(selected.x, selected.y, B[selected.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)');
   var ghost = placing || moving;
   if (screen === 'home' && ghost) { var gk = placing ? placing.k : moving.b.k, ok = footprintFree(gk, ghost.x, ghost.y, moving && moving.b.id);
     tileDiamond(ghost.x, ghost.y, B[gk].size, ok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', ok ? '#5fe07a' : '#ff5a5a'); }
-  sc.buildings.forEach(function (b) { if (moving && moving.b === b) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
+  // rubble lies flat on the ground: drawn first and faded, so ducks walk over it instead of under it
+  sc.buildings.forEach(function (b) { if (b.dead && b.k !== 'wall') { ctx.globalAlpha = .62; drawBuilding(b, sc); ctx.globalAlpha = 1; } });
+  sc.buildings.forEach(function (b) { if (b.dead || (moving && moving.b === b)) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
   if (ghost && screen === 'home') { var k2 = placing ? placing.k : moving.b.k, gb = { id: -1, k: k2, x: ghost.x, y: ghost.y, lv: placing ? 1 : moving.b.lv, aim: 2.36 }; list.push({ d: ghost.x + ghost.y + B[k2].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, sc); ctx.globalAlpha = 1; } }); }
   if (screen === 'home' && COLONEL && ART.troops.colonel) list.push({ d: COLONEL.x + COLONEL.y + .2, f: function () { drawTroop(COLONEL); } });
   if (screen === 'raid' && R) {
@@ -891,8 +916,8 @@ function draw(dt) {
   }
 }
 function boot() {
-  D = loadSave() || newGame(); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades
-  fit(); centerCamera(); homeTick(); hud();
+  D = migrateSave(loadSave() || newGame()); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades
+  fit(); centerCamera(0, hqCenter()); homeTick(); hud();
   $('btn-build').onclick = buildMenu; $('btn-army').onclick = armyMenu; $('btn-attack').onclick = attackMenu;
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };

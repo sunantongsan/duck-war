@@ -3,12 +3,12 @@
 var R = null;   // the running raid
 function rng(seed) { var s = seed >>> 0 || 1; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function catBase(n) {
-  var r = rng(n * 7919 + 13), hq = Math.min(10, 1 + Math.floor((n + 1) / 2)), list = [], id = 1;
+  var C = MAP / 2 - 1, r = rng(n * 7919 + 13), hq = Math.min(10, 1 + Math.floor((n + 1) / 2)), list = [], id = 1;
   function lv(base) { return clamp(Math.round(base + (r() - .5) * 2), 1, MAX_LV); }
   function free(k, x, y) { var s = B[k].size; if (x < 2 || y < 2 || x + s > MAP - 2 || y + s > MAP - 2) return false; return !list.some(function (b) { var t = B[b.k].size; return x < b.x + t + (b.k === 'wall' || k === 'wall' ? 0 : 0) && b.x < x + s && y < b.y + t && b.y < y + s; }); }
   function put(k, x, y, l) { if (!free(k, x, y)) return false; list.push({ id: id++, k: k, x: x, y: y, lv: l || lv(hq) }); return true; }
-  function scatter(k, l, rad) { for (var i = 0; i < 60; i++) { var a = r() * 6.28, d = rad[0] + r() * (rad[1] - rad[0]); if (put(k, Math.round(11 + Math.cos(a) * d), Math.round(11 + Math.sin(a) * d), l)) return; } }
-  put('hq', 11, 11, hq);
+  function scatter(k, l, rad) { for (var i = 0; i < 60; i++) { var a = r() * 6.28, d = rad[0] + r() * (rad[1] - rad[0]); if (put(k, Math.round(C + Math.cos(a) * d), Math.round(C + Math.sin(a) * d), l)) return; } }
+  put('hq', C, C, hq);
   var def = ['slingshot', 'slingshot', 'boxtower', 'slingshot', 'mortar', 'boxtower', 'watergun', 'chili', 'mortar', 'boxtower', 'slingshot'];
   var nDef = Math.min(def.length, 1 + Math.floor(n * .8));
   for (var i = 0; i < nDef; i++) scatter(def[i], lv(hq - 1), [3, 5.5]);
@@ -16,7 +16,7 @@ function catBase(n) {
   if (hq >= 5) scatter('syrupjar', lv(hq - 2), [2, 4]);
   // wall ring around the core
   if (n >= 2) { var ring = n >= 6 ? 6 : 5, wl = clamp(Math.floor(n / 3) + 1, 1, MAX_LV);
-    for (var t = -ring; t <= ring; t++) [[11 + t, 11 - ring], [11 + t, 11 + ring + 1], [11 - ring, 11 + t], [11 + ring + 1, 11 + t]].forEach(function (p) { put('wall', p[0] + 1, p[1], wl); }); }
+    for (var t = -ring; t <= ring; t++) [[C + 1 + t, C + 1 - ring], [C + 1 + t, C + 2 + ring], [C + 1 - ring, C + 1 + t], [C + 2 + ring, C + 1 + t], [C + 2 + ring, C + 2 + ring]].forEach(function (p) { put('wall', p[0], p[1], wl); }); }
   ['honeypump', 'veggieblender', 'honeypump', 'veggieblender', 'camp', 'barracks'].forEach(function (k, j) { if (j < 2 + Math.floor(n / 2)) scatter(k, lv(hq - 1), [7, 10]); });
   var loot = { honey: 2500 + n * 1800, veggie: 2500 + n * 1800, syrup: n >= 8 ? n * 40 : 0 };
   var cats = n >= 3 ? [n >= 10 ? 'cat_king' : n >= 6 ? 'cat_pan' : 'cat_spatula'] : [];
@@ -47,13 +47,25 @@ function freeSpot(cx, cy, r, seed) { // open ground near (cx, cy), so a guard is
 function rectDist(px, py, b) { var s = B[b.k].size, dx = Math.max(b.x - px, 0, px - (b.x + s)), dy = Math.max(b.y - py, 0, py - (b.y + s)); return Math.hypot(dx, dy); }
 function center(b) { var s = B[b.k].size / 2; return { x: b.x + s, y: b.y + s }; }
 function alive(list) { return list.filter(function (o) { return !o.dead; }); }
+// Ducks land only outside the walls: tiles fenced in by walls are off limits, and so is one tile round every building.
+function enclosed() {
+  if (R.enc) return R.enc;   // fixed when the raid starts: a breach doesn't open the inside for landing
+  var wall = new Uint8Array(MAP * MAP), seen = new Uint8Array(MAP * MAP), q = [], n = 0;
+  R.buildings.forEach(function (b) { if (b.k === 'wall' && !b.dead && b.x >= 0 && b.y >= 0 && b.x < MAP && b.y < MAP) { wall[b.y * MAP + b.x] = 1; n++; } });
+  for (var i = 0; i < MAP; i++) [i, (MAP - 1) * MAP + i, i * MAP, i * MAP + MAP - 1].forEach(function (c) { if (!wall[c] && !seen[c]) { seen[c] = 1; q.push(c); } });
+  while (q.length) { var c = q.pop(), x = c % MAP, y = (c / MAP) | 0;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { var nx = x + d[0], ny = y + d[1]; if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) return; var k = ny * MAP + nx; if (!wall[k] && !seen[k]) { seen[k] = 1; q.push(k); } }); }
+  var enc = new Uint8Array(MAP * MAP); for (var k = 0; k < MAP * MAP; k++) enc[k] = !seen[k] ? 1 : 0;
+  R.enc = enc; return enc;
+}
 function canDeploy(x, y) {
   if (x < 0.3 || y < 0.3 || x > MAP - .3 || y > MAP - .3) return false;
-  return !R.buildings.some(function (b) { return !b.dead && rectDist(x, y, b) < 1; });   // red zone: one tile around every building
+  if (enclosed()[Math.floor(y) * MAP + Math.floor(x)]) return false;
+  return !R.buildings.some(function (b) { return !b.dead && b.k !== 'wall' && rectDist(x, y, b) < 1; });
 }
 function deploy(x, y) {
   var k = R.pick; if (!k || !(R.army[k] > 0) || R.over) return false;
-  if (!canDeploy(x, y)) { R.redFlash = now(); toast('วางในเขตสีแดงไม่ได้'); return false; }
+  if (!canDeploy(x, y)) { R.redFlash = now(); toast('ปล่อยทหารได้แค่นอกกำแพง และห่างอาคาร 1 ช่อง'); return false; }
   var u = U[k]; R.army[k]--; R.deployed++; R.started = true;
   R.troops.push({ side: 'duck', kind: k, x: x, y: y, hp: uHp(k), max: uHp(k), cool: 0.2, dir: 2, born: now() });
   R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5 });
@@ -68,11 +80,14 @@ function grid() {
 }
 function findPath(t, target, range) {
   var g = grid(), sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1), N = MAP * MAP;
-  var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), open = [sy * MAP + sx]; cost[open[0]] = 0;
+  var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), hk = [], hn = [];   // binary heap of (cost, cell)
+  function push(n, k) { hk.push(k); hn.push(n); var i = hk.length - 1; while (i) { var p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hn[i] = hn[p]; i = p; } hk[i] = k; hn[i] = n; }
+  function pop() { var top = hn[0], lk = hk.pop(), ln = hn.pop(), L = hk.length; if (L) { var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i, mk = lk;
+      if (l < L && hk[l] < mk) { m = l; mk = hk[l]; } if (r < L && hk[r] < mk) m = r; if (m === i) break; hk[i] = hk[m]; hn[i] = hn[m]; i = m; } hk[i] = lk; hn[i] = ln; } return top; }
+  var start = sy * MAP + sx; cost[start] = 0; push(start, 0);
   var goal = -1;
-  while (open.length) {
-    var bi = 0; for (var i = 1; i < open.length; i++) if (cost[open[i]] < cost[open[bi]]) bi = i;
-    var c = open.splice(bi, 1)[0]; if (done[c]) continue; done[c] = 1;
+  while (hk.length) {
+    var c = pop(); if (done[c]) continue; done[c] = 1;
     var cx = c % MAP, cy = (c / MAP) | 0;
     if (rectDist(cx + .5, cy + .5, target) <= range + .45) { goal = c; break; }
     for (var d = 0; d < 8; d++) {
@@ -80,7 +95,7 @@ function findPath(t, target, range) {
       var n = ny * MAP + nx, occ = g[n], step = d < 4 ? 1 : 1.414;
       if (occ) { var ob = R.buildings[occ - 1]; if (ob === target) continue; if (ob.k !== 'wall') continue; step += 6 + ob.hp / 60; }
       if (d >= 4 && (g[cy * MAP + nx] && R.buildings[g[cy * MAP + nx] - 1].k !== 'wall' || g[ny * MAP + cx] && R.buildings[g[ny * MAP + cx] - 1].k !== 'wall')) continue;
-      if (cost[c] + step < cost[n]) { cost[n] = cost[c] + step; prev[n] = c; open.push(n); }
+      if (cost[c] + step < cost[n]) { cost[n] = cost[c] + step; prev[n] = c; push(n, cost[n]); }
     }
   }
   if (goal < 0) return null;

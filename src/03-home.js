@@ -2,12 +2,17 @@
 var D = null;
 function newGame() {
   var d = { v: 1, res: { honey: 1200, veggie: 1200, syrup: 0, coin: TEST ? 1000000 : 250 }, buildings: [], army: {}, queue: [], builders: 2, next: 1, t: now(), raid: 1, stars: 0, name: 'ฐานเป็ด' };
-  function add(k, x, y, lv) { d.buildings.push({ id: d.next++, k: k, x: x, y: y, lv: lv || 1 }); }
+  function add(k, x, y, lv) { d.buildings.push({ id: d.next++, k: k, x: x + 8, y: y + 8, lv: lv || 1 }); }   // laid out round the middle of the 40x40 map
   add('hq', 10, 10); add('honeypump', 6, 9); add('veggieblender', 15, 10); add('honeyjar', 7, 13); add('veggiejar', 14, 14);
   add('camp', 5, 15); add('barracks', 10, 15); add('slingshot', 11, 6);
-  d.army = { fork: 8 };
+  d.army = { fork: 8 }; d.map = MAP;
   return d;
 }
+function migrateSave(d) { // saves from the 24x24 map: move the base to the middle of the bigger one
+  if (!d.map) { d.buildings.forEach(function (b) { b.x += 8; b.y += 8; }); d.map = MAP; }
+  return d;
+}
+function hqCenter() { var h = D.buildings.find(function (b) { return b.k === 'hq'; }); return h ? { x: h.x + 1.5, y: h.y + 1.5 } : { x: MAP / 2, y: MAP / 2 }; }
 function hqLv() { var h = D.buildings.find(function (b) { return b.k === 'hq'; }); return h ? h.lv : 1; }
 function capacity(r) {
   if (r === 'coin') return Infinity;
