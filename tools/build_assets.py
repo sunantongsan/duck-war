@@ -140,7 +140,8 @@ for t in range(1, 7):
         d = os.path.join(R45, f'wall{t}{p}')
         if not os.path.exists(os.path.join(d, 'meta.json')): continue
         im, ox, oy, ppu, pad = load(d, 'base' + ('_' + p) + '.png') if os.path.exists(os.path.join(d, 'base_' + p + '.png')) else load(d, 'base.png')
-        pieces[p] = save_sprite(im, ox, oy, ppu, f'w_{t}_{p}')
+        a = np.array(im); a[(a[..., 3] < 235) & (a[..., :3].max(-1) < 45)] = 0; im = Image.fromarray(a)   # drop the long cast shadow (it gets cut at the frame edge)
+        pieces[p] = save_sprite(im, ox, oy, ppu, f'w_{t}_{p}', 0.8 if p == 'post' else 0)
     ART['walls'][str(t)] = pieces
 print('walls', len(ART['walls']))
 

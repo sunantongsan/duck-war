@@ -29,8 +29,9 @@ function hud() {
 }
 
 // ---------- building panel ----------
-function selectBuilding(b) {
-  selected = b; var p = $('panel'); p.innerHTML = ''; if (!b) { p.classList.remove('open'); return; } var d = B[b.k];
+function selectBuilding(b, keepGroup) {
+  if (!keepGroup || b !== selected) group = null; if (moving && b !== selected) moving = null;
+  var fresh = b !== selected; selected = b; var p = $('panel'); p.innerHTML = ''; if (!b) { p.classList.remove('open'); return; } var d = B[b.k];
   var lvTxt = b.lv ? 'เลเวล ' + b.lv : 'กำลังสร้าง';
   p.appendChild(h('div', 'p-title', '<b>' + d.name + '</b><small>' + lvTxt + '</small>'));
   var info = [];
@@ -47,7 +48,13 @@ function selectBuilding(b) {
     var c = bCost(b.k, b.lv + 1), u = h('button', 'btn green', 'อัปเกรด ' + costTag(d.res, c) + (d.time ? '<small>⏱ ' + clock(bTime(b.k, b.lv + 1) * 1000) + '</small>' : ''));
     u.onclick = function () { if (upgradeBuilding(b)) { selectBuilding(b); hud(); } }; row.appendChild(u);
   } else row.appendChild(h('span', 'note', b.k === 'hq' ? 'เลเวลสูงสุด' : 'อัปเกรดบ้านเป็ดเพื่อปลดล็อกเลเวลถัดไป'));
-  var mv = h('button', 'btn', '↔ ย้าย'); mv.onclick = function () { moving = { b: b, x: b.x, y: b.y }; p.classList.remove('open'); setMode('move'); }; row.appendChild(mv);
+  if (b.k === 'wall') {
+    if (group && group.length > 1) {
+      var lv0 = Math.min.apply(null, group.map(function (w) { return w.lv; })), n0 = group.filter(function (w) { return w.lv === lv0; }).length;
+      var ur = h('button', 'btn green', 'อัปเกรดทั้งแถว (' + n0 + ') ' + costTag(d.res, bCost('wall', lv0 + 1) * n0)); ur.onclick = upgradeRow; row.appendChild(ur);
+      var rr = h('button', 'btn', '⟳ หมุนแถว'); rr.onclick = rotateRow; row.appendChild(rr);
+    } else { var sr = h('button', 'btn', '▦ เลือกทั้งแถว'); sr.onclick = selectRow; row.appendChild(sr); }
+  }
   if (d.kind === 'make' && b.lv > 0 && !b.up) {
     var on = b.boost && b.boost > now(), row2 = h('div', 'p-row boost'), r = d.make, fc = fillCoins(r);
     var bv = h('button', 'btn video', on ? '▶ ต่อเวลา x2 <small>⚡ ' + clock(b.boost - now()) + ' · เหลือ ' + videosLeft() + '</small>' : '▶ ดูวิดีโอ ผลิต x2 1 ชม. <small>เหลือ ' + videosLeft() + '</small>');
@@ -57,7 +64,12 @@ function selectBuilding(b) {
     p.appendChild(row2);
   }
   if (d.kind === 'train' || d.kind === 'camp') { var a = h('button', 'btn', '🪖 กองทัพ'); a.onclick = armyMenu; row.appendChild(a); }
-  p.appendChild(row); p.classList.add('open');
+  p.appendChild(row); p.appendChild(h('div', 'note drag-hint', '✋ แตะค้างแล้วลากเพื่อย้าย' + (group && group.length > 1 ? 'ทั้งแถว' : ''))); p.classList.add('open');
+  if (fresh) keepClearOfPanel(b);
+}
+function keepClearOfPanel(b) { // if the panel would cover the selected building, slide the view up a little
+  var top = view.h - $('panel').offsetHeight - 14, s = B[b.k].size, c = toScreen(b.x + s / 2, b.y + s / 2);
+  if (c.y > top - cam.s * .6) { cam.y -= c.y - (top - cam.s * .6); dirty = true; }
 }
 
 // ---------- build menu ----------
@@ -81,13 +93,17 @@ function startPlacing(k) {
   selectBuilding(null); setMode('place');
 }
 function setMode(m) {
-  var bar = $('confirm'); bar.hidden = !(m === 'place' || m === 'move');
-  $('confirm-text').textContent = m === 'place' ? 'ลากเพื่อเลือกที่วาง ' + B[placing.k].name : m === 'move' ? 'ลากเพื่อย้าย ' + B[moving.b.k].name : '';
+  var bar = $('confirm'); bar.hidden = m !== 'place';
+  $('confirm-text').textContent = m === 'place' ? (B[placing.k].wall && placing.last ? 'วางกำแพงต่อ? ' + count('wall') + '/' + maxCount('wall', hqLv()) : 'ลากเพื่อเลือกที่วาง ' + B[placing.k].name) : '';
   dirty = true;
 }
 function confirmPlace() {
-  if (placing) { var b = placeBuilding(placing.k, placing.x, placing.y); if (!b) return; if (B[placing.k].wall && count('wall') < maxCount('wall', hqLv())) { placing.x += 1; setMode('place'); hud(); return; } placing = null; selectBuilding(b); }
-  if (moving) { if (!moveBuilding(moving.b, moving.x, moving.y)) { toast('วางตรงนี้ไม่ได้'); return; } moving = null; }
+  if (placing) { var b = placeBuilding(placing.k, placing.x, placing.y); if (!b) return;
+    if (B[placing.k].wall && count('wall') < maxCount('wall', hqLv())) {   // offer the next wall on the next tile of the line
+      var dir = placing.last ? [Math.sign(b.x - placing.last.x) || 0, Math.sign(b.y - placing.last.y) || 0] : (placing.dir || [1, 0]);
+      if (!dir[0] && !dir[1] || dir[0] && dir[1]) dir = placing.dir || [1, 0];
+      var nx = nextWallSpot(b.x, b.y, dir); placing.last = { x: b.x, y: b.y }; placing.dir = nx.dir; placing.x = nx.x; placing.y = nx.y; setMode('place'); hud(); return; }
+    placing = null; selectBuilding(b); }
   setMode(null); hud();
 }
 function cancelPlace() { placing = null; moving = null; setMode(null); }

@@ -6,27 +6,30 @@ function buildingAt(w, list) {
 }
 input.tap = function (w) {
   if (screen === 'home') {
-    if (placing || moving) { var o = placing || moving, s = B[placing ? placing.k : moving.b.k].size; o.x = Math.round(w.x - s / 2); o.y = Math.round(w.y - s / 2); dirty = true; return; }
+    if (placing) { var s = B[placing.k].size; placing.x = Math.round(w.x - s / 2); placing.y = Math.round(w.y - s / 2); placing.last = null; dirty = true; return; }
+    if (moving) { cancelMove(); }   // tapping away from a red, unplaced move puts the buildings back
     if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < 1.3) { // tap the colonel: he salutes and says something
       COLONEL.atk = now(); COLONEL.wait = 2; COLONEL.goal = null; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; sfx('tap'); buzz('light'); } dirty = true;
   } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
 };
 input.press = function (w) {
-  if (screen === 'home' && (placing || moving)) { var o = placing || moving, s = B[placing ? placing.k : moving.b.k].size; return w.x >= o.x - .5 && w.x <= o.x + s + .5 && w.y >= o.y - .5 && w.y <= o.y + s + .5; }
+  if (screen === 'home' && placing) { var o = placing, s = B[placing.k].size; return w.x >= o.x - .5 && w.x <= o.x + s + .5 && w.y >= o.y - .5 && w.y <= o.y + s + .5; }
+  if (screen === 'home' && (selected || moving)) return startDrag(w);
   if (screen === 'raid' && R && !R.over && R.pick) { stream = { x: w.x, y: w.y, next: now() + 350 }; return true; }
   return false;
 };
 var stream = null;
 input.drag = function (w) {
-  if (screen === 'home' && (placing || moving)) { var o = placing || moving, s = B[placing ? placing.k : moving.b.k].size; o.x = Math.round(w.x - s / 2); o.y = Math.round(w.y - s / 2); dirty = true; }
+  if (screen === 'home' && placing) { var o = placing, s = B[placing.k].size; o.x = Math.round(w.x - s / 2); o.y = Math.round(w.y - s / 2); o.last = null; dirty = true; }
+  if (screen === 'home' && moving && moving.from) dragTo(w);
   if (stream) { stream.x = w.x; stream.y = w.y; }
 };
-input.release = function () { stream = null; };
+input.release = function () { stream = null; if (screen === 'home' && moving && moving.from) dropDrag(); };
 
 function frame(t) {
   var dt = Math.min(.05, (t - last) / 1000 || 0); last = t;
-  if (screen === 'home') { colonelTick(dt); homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected) selectBuilding(selected); writeSave(); } }
+  if (screen === 'home') { colonelTick(dt); homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected && !moving) selectBuilding(selected, true); writeSave(); } }
   if (screen === 'raid' && R) {
     raidTick(dt); raidHud();
     if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; if (deploy(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4)) raidBar(); }
@@ -44,14 +47,18 @@ function draw(dt) {
     for (var ty = 0; ty < MAP; ty++) for (var tx = 0; tx < MAP; tx++) if (enc[ty * MAP + tx]) tileDiamond(tx, ty, 1, red, null);   // inside the walls
     sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
   }
-  if (screen === 'home' && selected) tileDiamond(selected.x, selected.y, B[selected.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)');
-  var ghost = placing || moving;
-  if (screen === 'home' && ghost) { var gk = placing ? placing.k : moving.b.k, ok = footprintFree(gk, ghost.x, ghost.y, moving && moving.b.id);
-    tileDiamond(ghost.x, ghost.y, B[gk].size, ok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', ok ? '#5fe07a' : '#ff5a5a'); }
+  if (screen === 'home' && !moving) selection().forEach(function (b) { tileDiamond(b.x, b.y, B[b.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)'); });
+  var mvOk = moving ? moveOk(moving) : true;
+  if (screen === 'home' && moving) moving.items.forEach(function (i) { tileDiamond(i.x, i.y, B[i.b.k].size, mvOk ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.4)', mvOk ? '#5fe07a' : '#ff5a5a'); });
+  if (screen === 'home' && placing) { var pok = footprintFree(placing.k, placing.x, placing.y);
+    tileDiamond(placing.x, placing.y, B[placing.k].size, pok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', pok ? '#5fe07a' : '#ff5a5a'); }
+  var movingSet = moving && screen === 'home' ? moving.items.map(function (i) { return i.b; }) : [], ghosts = moving && screen === 'home' ? moving.items.map(function (i) { return Object.assign({}, i.b, { x: i.x, y: i.y }); }) : [];
+  if (moving && screen === 'home') sc = { buildings: D.buildings.filter(function (b) { return movingSet.indexOf(b) < 0; }).concat(ghosts) };   // walls join up with where the moved walls are now
   // rubble lies flat on the ground: drawn first and faded, so ducks walk over it instead of under it
   sc.buildings.forEach(function (b) { if (b.dead && b.k !== 'wall') { ctx.globalAlpha = .62; drawBuilding(b, sc); ctx.globalAlpha = 1; } });
-  sc.buildings.forEach(function (b) { if (b.dead || (moving && moving.b === b)) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
-  if (ghost && screen === 'home') { var k2 = placing ? placing.k : moving.b.k, gb = { id: -1, k: k2, x: ghost.x, y: ghost.y, lv: placing ? 1 : moving.b.lv, aim: 2.36 }; list.push({ d: ghost.x + ghost.y + B[k2].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, sc); ctx.globalAlpha = 1; } }); }
+  sc.buildings.forEach(function (b) { if (b.dead || movingSet.indexOf(b) >= 0) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
+  if (placing && screen === 'home') { var gb = { id: -1, k: placing.k, x: placing.x, y: placing.y, lv: 1, aim: 2.36 }; list.push({ d: placing.x + placing.y + B[placing.k].size, f: function () { ctx.globalAlpha = .8; drawBuilding(gb, { buildings: D.buildings.concat([gb]) }); ctx.globalAlpha = 1; } }); }
+  ghosts.forEach(function (g) { list.push({ d: g.x + g.y + B[g.k].size, f: function () { ctx.globalAlpha = mvOk ? .9 : .7; drawBuilding(g, sc); ctx.globalAlpha = 1; } }); });
   if (screen === 'home' && COLONEL && ART.troops.colonel) list.push({ d: COLONEL.x + COLONEL.y + .2, f: function () { drawTroop(COLONEL); } });
   if (screen === 'raid' && R) {
     R.troops.forEach(function (t) { list.push({ d: t.x + t.y + .2 + (t.side === 'duck' && U[t.kind].air ? 6 : 0), f: function () { drawTroop(t); } }); });   // flyers are drawn above the buildings
@@ -70,7 +77,7 @@ function boot() {
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };
   $('btn-sound').onclick = soundMenu; $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
-  window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing || moving) cancelPlace(); else if (selected) selectBuilding(null); };
+  window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing) cancelPlace(); else if (moving) cancelMove(); else if (selected) selectBuilding(null); };
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
   window.duckReady = true;
