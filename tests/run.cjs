@@ -41,12 +41,14 @@ ok(g('(selectBuilding(null),true)'),'deselect building');
 // production boost: x2 only for the boosted hour, coins charged
 g('D.res.honey=0;var pm=D.buildings.find(b=>b.k==="honeypump");pm.up=null;delete pm.boost;D.t=Date.now()-3600000;homeTick();');
 const base=g('D.res.honey');
-g('D.res.honey=0;var c0=D.res.coin;boostWithCoins(pm);D.t=Date.now()-3600000;homeTick();');
+g('D.res.honey=0;applyBoost(pm);D.t=Date.now()-3600000;homeTick();');
 const boosted=g('D.res.honey');
-ok(Math.abs(boosted-2*base)<base*0.02,'boost doubles an hour of honey ('+Math.round(base)+' -> '+Math.round(boosted)+')');
-ok(g('c0-D.res.coin===boostCoins(pm)'),'boost costs duck coins');
+ok(Math.abs(boosted-2*base)<base*0.02,'video boost doubles an hour of honey ('+Math.round(base)+' -> '+Math.round(boosted)+')');
 g('D.res.honey=0;pm.boost=Date.now()-3600000-5000;D.t=Date.now()-3600000;homeTick();');
 ok(Math.abs(g('D.res.honey')-base)<base*0.02,'expired boost gives normal rate');
+g('D.res.honey=100;var c0=D.res.coin,fc=fillCoins("honey");fillWithCoins("honey");');
+ok(g('D.res.honey===capacity("honey")&&c0-D.res.coin===fc&&fc>0'),'coins fill honey storage instantly');
+ok(g('fillCoins("honey")===0&&fillWithCoins("honey")===false'),'full storage costs nothing');
 ok(g('videosLeft()')===5,'5 videos a day');
 g('colonelTick(0.1);for(let i=0;i<200;i++)colonelTick(0.1);');ok(g('!!COLONEL&&!insideBuilding(COLONEL.x,COLONEL.y)'),'colonel strolls outside buildings');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

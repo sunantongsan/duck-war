@@ -140,7 +140,7 @@ function drawTroop(t) {
   ctx.save(); ctx.globalAlpha = alpha;
   ctx.fillStyle = 'rgba(30,60,30,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .32 * cam.s * u.h, .16 * cam.s * u.h, 0, 0, 7); ctx.fill();
   ctx.translate(p.x + ox, p.y + oy); ctx.scale(sx, sy);
-  ctx.drawImage(im, col * L.cw, dir * L.ch, L.cw, L.ch, -a.ax * k, -a.ay * k, L.cw * k, L.ch * k);
+  var cw = a.cw || L.cw, ch = a.ch || L.ch; ctx.drawImage(im, col * cw, dir * ch, cw, ch, -a.ax * k, -a.ay * k, cw * k, ch * k);
   ctx.restore();
   if (!t.dead && t.hp < t.max) hpBar(t.x, t.y, u.h * 1.45, t.hp / t.max, t.side === 'cat' ? '#ff6b5a' : '#7be36a');
 }

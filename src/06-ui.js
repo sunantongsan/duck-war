@@ -48,10 +48,11 @@ function selectBuilding(b) {
   } else row.appendChild(h('span', 'note', b.k === 'hq' ? 'เลเวลสูงสุด' : 'อัปเกรดบ้านเป็ดเพื่อปลดล็อกเลเวลถัดไป'));
   var mv = h('button', 'btn', '↔ ย้าย'); mv.onclick = function () { moving = { b: b, x: b.x, y: b.y }; p.classList.remove('open'); setMode('move'); }; row.appendChild(mv);
   if (d.kind === 'make' && b.lv > 0 && !b.up) {
-    var on = b.boost && b.boost > now(), row2 = h('div', 'p-row boost');
-    row2.appendChild(h('span', 'note', on ? '⚡ ผลิต x2 อีก ' + clock(b.boost - now()) : '⚡ เร่งผลิต x2 นาน 1 ชม.'));
-    var bc = h('button', 'btn gold', (on ? '+1 ชม. ' : '') + costTag('coin', boostCoins(b))); bc.onclick = function () { if (boostWithCoins(b)) { selectBuilding(b); hud(); } }; row2.appendChild(bc);
-    var bv = h('button', 'btn video', '▶ ดูวิดีโอ <small>เหลือ ' + videosLeft() + '</small>'); bv.onclick = function () { boostWithVideo(b, function () { selectBuilding(b); }); }; row2.appendChild(bv);
+    var on = b.boost && b.boost > now(), row2 = h('div', 'p-row boost'), r = d.make, fc = fillCoins(r);
+    var bv = h('button', 'btn video', on ? '▶ ต่อเวลา x2 <small>⚡ ' + clock(b.boost - now()) + ' · เหลือ ' + videosLeft() + '</small>' : '▶ ดูวิดีโอ ผลิต x2 1 ชม. <small>เหลือ ' + videosLeft() + '</small>');
+    bv.onclick = function () { boostWithVideo(b, function () { selectBuilding(b); }); }; row2.appendChild(bv);
+    var bc = h('button', 'btn gold' + (fc ? '' : ' off'), fc ? 'เติม' + RES[r].name + 'เต็มทันที ' + costTag('coin', fc) : 'คลังเต็มแล้ว');
+    bc.onclick = function () { if (fillWithCoins(r)) { selectBuilding(b); hud(); } }; row2.appendChild(bc);
     p.appendChild(row2);
   }
   if (d.kind === 'train' || d.kind === 'camp') { var a = h('button', 'btn', '🪖 กองทัพ'); a.onclick = armyMenu; row.appendChild(a); }

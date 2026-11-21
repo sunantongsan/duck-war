@@ -143,7 +143,8 @@ print('walls', len(ART['walls']))
 
 # ---------- troops: 8 directions x 21 frames (idle 0-3, walk 4-11, attack 12-15, death 16-20), 180x192 cells ----------
 TROOPS = {'fork': 'fork', 'sling': 'sling', 'giant': 'giant', 'nurse': 'nurse', 'digger': 'digger', 'pot': 'armor', 'chef': 'chef', 'pig': 'pig_rider',
-          'bomber': 'bomber', 'witch': 'witch', 'dog': 'dog', 'egret': 'egret', 'cat_spatula': 'cat_spatula', 'cat_pan': 'cat_pan', 'cat_chili': 'cat_chili', 'cat_bomb': 'cat_bomb', 'cat_king': 'cat_king', 'colonel': 'colonel'}
+          'bomber': 'bomber', 'witch': 'witch', 'dog': 'dog', 'egret': 'egret', 'cat_spatula': 'cat_spatula', 'cat_pan': 'cat_pan', 'cat_chili': 'cat_chili', 'cat_bomb': 'cat_bomb', 'cat_king': 'cat_king', 'colonel': 'colonel_big'}
+BIG = {'colonel': 1.5}   # heroes are drawn much bigger, so they get bigger cells
 CW, CH = 180, 192
 def outline(im):
     a = im.split()[3].point(lambda v: 255 if v > 90 else 0).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(.5))
@@ -157,17 +158,19 @@ for key, src in TROOPS.items():
     d = os.path.join(ATL, src)
     if not os.path.exists(os.path.join(d, 'meta.json')): print('skip troop (not rendered yet)', key); continue
     m = json.load(open(os.path.join(d, 'meta.json')))
-    sheet = Image.new('RGBA', (21 * CW, 8 * CH)); top = CH
+    sc = BIG.get(key, 1); cw, ch = int(CW * sc), int(CH * sc)
+    sheet = Image.new('RGBA', (21 * cw, 8 * ch)); top = ch
     for dd in range(8):
         for c in range(21):
-            im = outline(Image.open(os.path.join(d, f'd{dd}_c{c:02d}.png')).convert('RGBA').resize((CW, CH), Image.LANCZOS))
-            sheet.alpha_composite(im, (c * CW, dd * CH))
+            im = outline(Image.open(os.path.join(d, f'd{dd}_c{c:02d}.png')).convert('RGBA').resize((cw, ch), Image.LANCZOS))
+            sheet.alpha_composite(im, (c * cw, dd * ch))
             if c == 0:
                 bb = im.split()[3].point(lambda v: 255 if v > 60 else 0).getbbox()
                 if bb: top = min(top, bb[1])
     sheet.save(os.path.join(OUT, f'u_{key}.webp'), 'WEBP', quality=Q, method=6)
-    ax, ay = m['ox'] * .75, m['oy'] * .75
+    ax, ay = m['ox'] * .75 * sc, m['oy'] * .75 * sc
     ART['troops'][key] = {'file': f'u_{key}.webp', 'ax': round(ax, 1), 'ay': round(ay, 1), 'h': round(ay - top, 1)}
+    if sc != 1: ART['troops'][key].update({'cw': cw, 'ch': ch})
     print('troop', key)
 ART['troopLayout'] = {'cw': CW, 'ch': CH, 'dirs': 8, 'idle': [0, 4], 'walk': [4, 8], 'attack': [12, 4], 'death': [16, 5]}
 json.dump(ART, open(os.path.join(ROOT, 'web', 'data', 'art.json'), 'w'), separators=(',', ':'))

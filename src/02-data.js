@@ -45,7 +45,7 @@ var U = {
 Object.keys(U).forEach(function (k) { U[k].key = k; });
 function uHp(k, lv) { return grow(U[k].hp, lv || 1, 1.18); }
 function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, 1.18); }
-var HEROES = { colonel: { name: 'ผู้พันเป็ด', art: 'colonel', h: 1.2, speed: 0.9 } };
+var HEROES = { colonel: { name: 'ผู้พันเป็ด', art: 'colonel', h: 2.2, speed: 0.8 } };   // hero-sized, like a Clash king
 var CATS = { cat_spatula: { art: 'cat_spatula', h: 1, hp: 120, dmg: 12, rate: 1, range: 0.6, speed: 1.5, hit: 'smash' },
              cat_pan: { art: 'cat_pan', h: 1.15, hp: 260, dmg: 16, rate: 1.3, range: 0.6, speed: 1.1, hit: 'smash' },
              cat_king: { art: 'cat_king', h: 1.35, hp: 900, dmg: 40, rate: 1.4, range: 0.7, speed: 1.0, hit: 'smash' } };

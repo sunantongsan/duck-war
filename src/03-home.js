@@ -82,12 +82,25 @@ function finishTraining() {
 }
 function moveBuilding(b, x, y) { if (!footprintFree(b.k, x, y, b.id)) return false; b.x = x; b.y = y; writeSave(); return true; }
 
-// ---------- production boost: x2 for an hour, paid with duck coins or a rewarded video ----------
+// ---------- speed-ups for resources ----------
+// a rewarded video doubles one maker's output for an hour; duck coins fill that resource's storage right away
 var BOOST_MS = 3600000, VIDEO_PER_DAY = 5;
-function boostCoins(b) { return Math.max(10, Math.round(rate(b) / 40) * 5); }
+function totalRate(r) { var t = 0; D.buildings.forEach(function (b) { var d = B[b.k]; if (d.kind === 'make' && d.make === r && b.lv > 0 && !b.up) t += rate(b); }); return t; }
+function fillMissing(r) { return Math.max(0, Math.floor(capacity(r) - D.res[r])); }
+function fillCoins(r) { // priced like any other speed-up: 1 duck coin per minute the makers would need
+  var miss = fillMissing(r), tr = totalRate(r); if (!miss) return 0;
+  return tr > 0 ? coinsFor(miss / tr * 3600000) : Math.max(1, Math.ceil(miss / 50));
+}
+function fillWithCoins(r) {
+  var miss = fillMissing(r), c = fillCoins(r);
+  if (!miss) { toast('คลัง' + RES[r].name + 'เต็มอยู่แล้ว'); return false; }
+  if (D.res.coin < c) { toast('เหรียญเป็ดไม่พอ'); buzz('heavy'); return false; }
+  D.res.coin -= c; D.res[r] += miss; buzz('success'); toast('🪙 เติม' + RES[r].name + ' +' + fmt(miss) + ' เต็มคลังแล้ว!');
+  D.buildings.forEach(function (b) { var d = B[b.k]; if ((d.kind === 'store' && d.store === r) || (d.kind === 'make' && d.make === r)) b.pop = now(); });
+  writeSave(); dirty = true; return true;
+}
 function videosLeft() { var day = new Date().toDateString(); if (D.vidDay !== day) { D.vidDay = day; D.vids = 0; } return VIDEO_PER_DAY - (D.vids || 0); }
 function applyBoost(b) { b.boost = Math.max(now(), b.boost || 0) + BOOST_MS; b.pop = now(); buzz('success'); toast('⚡ ' + B[b.k].name + ' ผลิตเร็ว x2 นาน 1 ชั่วโมง'); writeSave(); dirty = true; }
-function boostWithCoins(b) { var c = boostCoins(b); if (D.res.coin < c) { toast('เหรียญเป็ดไม่พอ'); buzz('heavy'); return false; } D.res.coin -= c; applyBoost(b); return true; }
 function boostWithVideo(b, done) {
   if (videosLeft() <= 0) { toast('ดูวิดีโอครบ ' + VIDEO_PER_DAY + ' ครั้งแล้ววันนี้'); return; }
   showRewardedVideo(function (ok) { if (!ok) { toast('ต้องดูวิดีโอจนจบถึงได้รางวัล'); return; } D.vids = (D.vids || 0) + 1; applyBoost(b); if (done) done(); });
@@ -106,11 +119,11 @@ var COLONEL = null;
 function colonelTick(dt) {
   var hq = D.buildings.find(function (b) { return b.k === 'hq'; }); if (!hq) return;
   var hc = { x: hq.x + 1.5, y: hq.y + 1.5 };
-  if (!COLONEL) COLONEL = { side: 'hero', kind: 'colonel', x: hc.x + 2.2, y: hc.y + .4, face: 2.36, hp: 1, max: 1, wait: 1 };
+  if (!COLONEL) COLONEL = { side: 'hero', kind: 'colonel', x: hc.x + 2.8, y: hc.y + .4, face: 2.36, hp: 1, max: 1, wait: 1 };
   var c = COLONEL; c.moving = false;
   if (c.wait > 0) { c.wait -= dt; return; }
   if (!c.goal) {
-    for (var i = 0; i < 20 && !c.goal; i++) { var a = Math.random() * 6.28, r = 2.2 + Math.random() * 1.8, g = { x: hc.x + Math.cos(a) * r, y: hc.y + Math.sin(a) * r };
+    for (var i = 0; i < 20 && !c.goal; i++) { var a = Math.random() * 6.28, r = 2.6 + Math.random() * 2.2, g = { x: hc.x + Math.cos(a) * r, y: hc.y + Math.sin(a) * r };
       if (g.x > .5 && g.y > .5 && g.x < MAP - .5 && g.y < MAP - .5 && !insideBuilding(g.x, g.y)) c.goal = g; }
     if (!c.goal) { c.wait = 1; return; }
   }
@@ -120,5 +133,5 @@ function colonelTick(dt) {
   if (insideBuilding(nx, ny)) { c.goal = null; c.wait = .5; return; }
   c.x = nx; c.y = ny; c.face = Math.atan2(dy, dx); c.moving = true; c.walk = (c.walk || 0) + st; dirty = true;
 }
-function insideBuilding(x, y) { return D.buildings.some(function (b) { var s = B[b.k].size; return x > b.x - .1 && y > b.y - .1 && x < b.x + s + .1 && y < b.y + s + .1; }); }
+function insideBuilding(x, y) { return D.buildings.some(function (b) { var s = B[b.k].size; return x > b.x - .45 && y > b.y - .45 && x < b.x + s + .45 && y < b.y + s + .45; }); }
 var COLONEL_LINES = ['ทหารเป็ด! เตรียมพร้อม!', 'แมวจะไม่ได้แตะไข่ของเราแม้แต่ฟองเดียว', 'อัปเกรดฐานให้แข็งแรงไว้นะ', 'ก๊าบ! ผู้พันตรวจแถว', 'น้ำผึ้งพร้อม น้ำผักพร้อม บุกได้!'];
