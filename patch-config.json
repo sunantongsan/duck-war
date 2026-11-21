@@ -2,6 +2,6 @@
   "schema": 1,
   "channel": "test",
   "nativeVersion": 1,
-  "contentVersion":9,
-  "label":"0.1.8"
+  "contentVersion":10,
+  "label":"0.1.9"
 }

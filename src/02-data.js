@@ -31,18 +31,29 @@ function bHp(k, lv) { return grow(B[k].hp, lv, 1.2); }
 function bMaxLv(k, hqLv) { return k === 'hq' ? MAX_LV : Math.min(MAX_LV, hqLv + (B[k].kind === 'wall' ? 0 : 1)); }
 
 // Troops. size = housing space; time = training seconds; pref: what they go for first.
-var U = {
-  fork:   { name: 'เป็ดส้อม',        art: 'fork',   h: 0.95, space: 1, cost: 25,  res: 'veggie', time: 5,  hp: 45,  dmg: 9,  rate: 1,   range: 0.5, speed: 1.6, pref: 'any',      hit: 'stab' },
-  sling:  { name: 'เป็ดหนังสติ๊ก',    art: 'sling',  h: 0.95, space: 1, cost: 50,  res: 'veggie', time: 6,  hp: 22,  dmg: 8,  rate: 1,   range: 3.5, speed: 1.5, pref: 'any',      hit: 'shot', air: false, shootsAir: true, unlock: 2 },
-  giant:  { name: 'เป็ดยักษ์กระทะ',   art: 'giant',  h: 1.35, space: 5, cost: 250, res: 'veggie', time: 30, hp: 320, dmg: 12, rate: 2,   range: 0.6, speed: 0.75, pref: 'defense', hit: 'smash', unlock: 3 },
-  digger: { name: 'เป็ดขุดดิน',       art: 'digger', h: 0.95, space: 1, cost: 40,  res: 'veggie', time: 7,  hp: 30,  dmg: 12, rate: 1,   range: 0.5, speed: 2.2, pref: 'resource', hit: 'stab', burrow: true, unlock: 4 },   // tunnels under walls, can't be hit while underground
-  pot:    { name: 'เป็ดหม้อ',          art: 'pot',    h: 1.1,  space: 2, cost: 100, res: 'veggie', time: 12, hp: 120, dmg: 18, rate: 1.4, range: 0.5, speed: 1.1, pref: 'wall',     hit: 'smash', wallBonus: 10, unlock: 5 },
-  nurse:  { name: 'เป็ดพยาบาล',       art: 'nurse',  h: 1.0,  space: 4, cost: 500, res: 'veggie', time: 40, hp: 150, dmg: 0,  heal: 18, rate: 1, range: 2.5, speed: 1.4, pref: 'heal', hit: 'heal', unlock: 6 },
-  chef:   { name: 'เป็ดเชฟพริก',       art: 'chef',   h: 1.0,  space: 4, cost: 600, res: 'veggie', time: 40, hp: 75,  dmg: 50, rate: 1.5, range: 3, speed: 1.4, pref: 'any', hit: 'fire', splash: 1, unlock: 7 },
-  pig:    { name: 'เป็ดขี่หมู',        art: 'pig',    h: 1.2,  space: 5, cost: 80,  res: 'syrup',  time: 45, hp: 280, dmg: 40, rate: 1,  range: 0.6, speed: 2.0, pref: 'defense', hit: 'smash', jump: true, unlock: 8 },
-  balloon: { name: 'เป็ดบอลลูนถุงก๊อบแก๊บ', art: 'balloon', h: 2.7, space: 5, cost: 400, res: 'veggie', time: 35, hp: 260, dmg: 72, rate: 3, range: 0.35, speed: 0.85, pref: 'defense', hit: 'cracker', splash: 1.2, air: true, unlock: 6 },   // hangs from a shopping bag, drops firecrackers
-  plane:  { name: 'เป็ดขี่จรวดพับ',      art: 'plane',  h: 1.25, space: 2, cost: 90,  res: 'veggie', time: 10, hp: 60,  dmg: 15, rate: 1,  range: 2.5, speed: 2.4, pref: 'any', hit: 'shot', air: true, unlock: 7 },   // fast paper-plane flyer
-  dog:    { name: 'หมาดัลเมเชียน',     art: 'dog',    h: 1.45, space: 10, cost: 300, res: 'syrup', time: 90, hp: 1100, dmg: 70, rate: 1.2, range: 0.7, speed: 1.1, pref: 'any', hit: 'bite', unlock: 9 }
+var U = {   // Clash counterpart in the comment; unlock = training-yard level
+  fork:    { name: 'เป็ดส้อม',             art: 'fork',    h: 0.95, space: 1,  cost: 25,   res: 'veggie', time: 5,   hp: 45,   dmg: 9,   rate: 1,   range: 0.5, speed: 1.6,  pref: 'any',      hit: 'stab' },                                  // barbarian
+  sling:   { name: 'เป็ดหนังสติ๊ก',         art: 'sling',   h: 0.95, space: 1,  cost: 50,   res: 'veggie', time: 6,   hp: 22,   dmg: 8,   rate: 1,   range: 3.5, speed: 1.5,  pref: 'any',      hit: 'shot', unlock: 2 },                       // archer
+  giant:   { name: 'เป็ดยักษ์กระทะ',        art: 'giant',   h: 1.35, space: 5,  cost: 250,  res: 'veggie', time: 30,  hp: 320,  dmg: 12,  rate: 2,   range: 0.6, speed: 0.75, pref: 'defense',  hit: 'smash', unlock: 3 },                      // giant
+  thief:   { name: 'เป็ดขโมย',             art: 'thief',   h: 0.95, space: 1,  cost: 30,   res: 'veggie', time: 6,   hp: 25,   dmg: 10,  rate: 1,   range: 0.5, speed: 2.6,  pref: 'resource', hit: 'stab', resBonus: 2, unlock: 3 },       // goblin: double damage on resource buildings
+  bomber:  { name: 'เป็ดระเบิด',            art: 'bomber',  h: 0.95, space: 2,  cost: 100,  res: 'veggie', time: 12,  hp: 40,   dmg: 60,  rate: 1,   range: 0.5, speed: 2.4,  pref: 'wall',     hit: 'blast', splash: 1.3, wallBonus: 40, unlock: 4 },   // wall breaker: runs at a wall, blows itself up
+  digger:  { name: 'เป็ดขุดดิน',            art: 'digger',  h: 0.95, space: 1,  cost: 40,   res: 'veggie', time: 7,   hp: 30,   dmg: 12,  rate: 1,   range: 0.5, speed: 2.2,  pref: 'resource', hit: 'stab', burrow: true, unlock: 5 },     // miner: tunnels under walls
+  balloon: { name: 'เป็ดบอลลูนถุงก๊อบแก๊บ',  art: 'balloon', h: 2.7,  space: 5,  cost: 400,  res: 'veggie', time: 35,  hp: 260,  dmg: 72,  rate: 3,   range: 0.35, speed: 0.85, pref: 'defense', hit: 'cracker', splash: 1.2, air: true, unlock: 5 },   // balloon
+  chef:    { name: 'เป็ดเชฟพริก',           art: 'chef',    h: 1.0,  space: 4,  cost: 600,  res: 'veggie', time: 40,  hp: 75,   dmg: 50,  rate: 1.5, range: 3,   speed: 1.4,  pref: 'any',      hit: 'fire', splash: 1, unlock: 6 },           // wizard
+  nurse:   { name: 'เป็ดพยาบาล',            art: 'nurse',   h: 1.0,  space: 4,  cost: 500,  res: 'veggie', time: 40,  hp: 150,  dmg: 0,   heal: 18, rate: 1, range: 2.5, speed: 1.4, pref: 'heal', hit: 'heal', unlock: 6 },               // healer
+  plane:   { name: 'เป็ดขี่จรวดพับ',         art: 'plane',   h: 1.25, space: 2,  cost: 90,   res: 'veggie', time: 10,  hp: 60,   dmg: 15,  rate: 1,   range: 2.5, speed: 2.4,  pref: 'any',      hit: 'shot', air: true, unlock: 7 },          // minion
+  prop:    { name: 'เป็ดใบพัด',             art: 'prop',    h: 1.2,  space: 10, cost: 900,  res: 'veggie', time: 60,  hp: 260,  dmg: 32,  rate: 1.2, range: 2,   speed: 1.6,  pref: 'any',      hit: 'shot', splash: 0.8, air: true, rage: true, unlock: 7 },   // baby dragon: angrier alone
+  pot:     { name: 'เป็ดหม้อ',              art: 'pot',     h: 1.25, space: 8,  cost: 450,  res: 'veggie', time: 60,  hp: 800,  dmg: 14,  rate: 2,   range: 0.6, speed: 0.65, pref: 'defense',  hit: 'smash', unlock: 7 },                      // golem-ish tank: soaks the shots
+  kite:    { name: 'เป็ดว่าว',              art: 'kite',    h: 1.9,  space: 20, cost: 1800, res: 'veggie', time: 120, hp: 1200, dmg: 90,  rate: 1.5, range: 2.5, speed: 1.2,  pref: 'any',      hit: 'fire', splash: 1, air: true, unlock: 8 },   // dragon
+  mop:     { name: 'เป็ดไม้ถูพื้น',          art: 'mop',     h: 1.0,  space: 8,  cost: 90,   res: 'syrup',  time: 60,  hp: 340,  dmg: 48,  rate: 1.8, range: 0.6, speed: 1.6,  pref: 'any',      hit: 'spin', spin: 1.1, unlock: 8 },          // valkyrie: spins, hits all round
+  pig:     { name: 'เป็ดขี่หมู',             art: 'pig',     h: 1.2,  space: 5,  cost: 80,   res: 'syrup',  time: 45,  hp: 280,  dmg: 40,  rate: 1,   range: 0.6, speed: 2.0,  pref: 'defense',  hit: 'smash', jump: true, unlock: 8 },          // hog rider
+  egret:   { name: 'นกกระยาง',              art: 'egret',   h: 1.6,  space: 25, cost: 1500, res: 'veggie', time: 150, hp: 1400, dmg: 180, rate: 2,   range: 0.7, speed: 0.9,  pref: 'any',      hit: 'stab', unlock: 9 },                       // P.E.K.K.A
+  witch:   { name: 'เป็ดแม่มด',             art: 'witch',   h: 1.05, space: 12, cost: 150,  res: 'syrup',  time: 90,  hp: 160,  dmg: 25,  rate: 1.4, range: 3.5, speed: 1.3,  pref: 'any',      hit: 'magic', summon: 'duckling', unlock: 9 },   // witch: raises ducklings
+  fan:     { name: 'เป็ดพัดลม',             art: 'fan',     h: 1.7,  space: 30, cost: 250,  res: 'syrup',  time: 120, hp: 2400, dmg: 6,   rate: 1,   range: 1,   speed: 1.0,  pref: 'airdef',   hit: 'shot', air: true, split: 'fanlet', unlock: 9 },   // lava hound: hunts anti-air, bursts into small fans
+  dog:     { name: 'หมาดัลเมเชียน',          art: 'dog',     h: 1.45, space: 10, cost: 300,  res: 'syrup',  time: 90,  hp: 1100, dmg: 70,  rate: 1.2, range: 0.7, speed: 1.1,  pref: 'any',      hit: 'bite', unlock: 9 },                       // yeti
+  // not trainable: made by other troops
+  duckling: { name: 'ลูกเป็ด', art: 'fork', h: 0.55, space: 0, hp: 22, dmg: 6, rate: 1, range: 0.5, speed: 2.0, pref: 'any', hit: 'stab', hidden: true },
+  fanlet:   { name: 'พัดลมจิ๋ว', art: 'fan',  h: 0.75, space: 0, hp: 45, dmg: 9, rate: 1, range: 2, speed: 2.0, pref: 'any', hit: 'shot', air: true, hidden: true }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });
 function uHp(k, lv) { return grow(U[k].hp, lv || 1, 1.18); }

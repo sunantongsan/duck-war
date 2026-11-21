@@ -70,4 +70,17 @@ ok(g('D.res.honey===capacity("honey")&&c0-D.res.coin===fc&&fc>0'),'coins fill ho
 ok(g('fillCoins("honey")===0&&fillWithCoins("honey")===false'),'full storage costs nothing');
 ok(g('videosLeft()')===5,'5 videos a day');
 g('colonelTick(0.1);for(let i=0;i<200;i++)colonelTick(0.1);');ok(g('!!COLONEL&&!insideBuilding(COLONEL.x,COLONEL.y)'),'colonel strolls outside buildings');
+// the rest of the roster
+g('D.army={bomber:4};startRaid(6);R.pick="bomber";for(var i=0;i<4;i++)deploy(4,18+i*.5);var w0=R.buildings.filter(b=>b.k==="wall"&&b.dead).length;');
+for(let i=0;i<25*20;i++)g('raidTick(0.05)');
+ok(g('R.buildings.filter(b=>b.k==="wall"&&b.dead).length>w0&&R.troops.filter(t=>t.kind==="bomber").every(t=>t.dead)'),'wall-breaker ducks blow holes in the wall and go with it');
+g('D.army={witch:1};startRaid(1);R.pick="witch";deploy(4,18);');
+for(let i=0;i<4*20;i++)g('raidTick(0.05)');
+ok(g('R.troops.filter(t=>t.kind==="duckling").length>=3'),'witch raises ducklings');
+g('D.army={fan:1};startRaid(1);R.pick="fan";deploy(4,18);var f=R.troops.find(t=>t.kind==="fan");damage(f,1e6);');
+ok(g('R.troops.filter(t=>t.kind==="fanlet").length===6'),'fan duck bursts into 6 little fans');
+g('startRaid(1);var jar=R.buildings.find(b=>b.k==="honeyjar"),h0=jar.hp;damage(jar,10,{kind:"thief"});var h1=jar.hp;damage(jar,10,{kind:"fork"});');
+ok(g('h0-h1===20&&h1-jar.hp===10'),'thief duck hits storages twice as hard');
+ok(g('Object.keys(U).filter(k=>!U[k].hidden).length')===19,'19 trainable troops');
+ok(g('Object.keys(U).every(k=>ART.troops[U[k].art])'),'every troop has its art');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

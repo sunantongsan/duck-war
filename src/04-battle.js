@@ -107,6 +107,7 @@ function chooseTarget(t) {
   var u = U[t.kind], list = R.buildings.filter(function (b) { return !b.dead && b.k !== 'wall'; }), want = list;
   if (u.pref === 'defense') { var d = list.filter(function (b) { return B[b.k].kind === 'defense'; }); if (d.length) want = d; }
   if (u.pref === 'resource') { var r = list.filter(function (b) { return /store|make/.test(B[b.k].kind); }); if (r.length) want = r; }
+  if (u.pref === 'airdef') { var aa = list.filter(function (b) { return B[b.k].kind === 'defense' && B[b.k].air; }); if (!aa.length) aa = list.filter(function (b) { return B[b.k].kind === 'defense'; }); if (aa.length) want = aa; }
   if (u.pref === 'wall') { var w = R.buildings.filter(function (b) { return !b.dead && b.k === 'wall'; }); if (w.length) want = w; }
   var best = null, bd = 1e9; want.forEach(function (b) { var dd = rectDist(t.x, t.y, b); if (dd < bd) { bd = dd; best = b; } });
   return best;
@@ -114,6 +115,7 @@ function chooseTarget(t) {
 function damage(target, amount, from) {
   if (target.dead) return;
   if (from && U[from.kind] && U[from.kind].wallBonus && target.k === 'wall') amount *= U[from.kind].wallBonus;
+  if (from && U[from.kind] && U[from.kind].resBonus && target.k && /store|make/.test(B[target.k].kind)) amount *= U[from.kind].resBonus;
   target.hp -= amount; target.hitAt = now();
   if (target.k) { // building: loot and debris
     if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { var v = target.loot[r] || 0, give = Math.min(v, v * amount / target.max * 1.0001); target.loot[r] -= give; R.taken[r] += give; });
@@ -123,7 +125,8 @@ function damage(target, amount, from) {
     target.hp = 0; target.dead = true; target.deadAt = now();
     if (target.k) { sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
-    else { sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
+    else { if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
+      sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
   }
 }
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
@@ -133,7 +136,8 @@ function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
 function troopTick(t, dt) {
   if (t.dead) return;
   t.cool -= dt; t.moving = false;
-  if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; sfx(pd.kind === 'bite' ? 'bite' : pd.kind === 'smash' ? 'smash' : 'stab'); damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
+  if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; sfx(pd.kind === 'bite' ? 'bite' : pd.kind === 'smash' || pd.kind === 'spin' ? 'smash' : 'stab');
+    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
   if (t.side === 'cat') return catTick(t, dt);
   var u = U[t.kind];
   if (u.pref === 'heal') { // nurse: follow and heal the most hurt duck nearby
@@ -144,10 +148,13 @@ function troopTick(t, dt) {
     if (hurt && t.cool <= 0) { t.cool = u.rate; t.atk = now(); alive(R.troops).forEach(function (o) { if (o.side === 'duck' && Math.hypot(o.x - hurt.x, o.y - hurt.y) < 1.5) o.hp = Math.min(o.max, o.hp + u.heal); }); sfx('heal'); R.fx.push({ t: 'heal', x: hurt.x, y: hurt.y, life: .6, max: .6 }); }
     return;
   }
+  if (u.summon) { t.sumT = (t.sumT === undefined ? 1 : t.sumT) - dt;
+    if (t.sumT <= 0) { t.sumT = 7; var mine = R.troops.filter(function (o) { return !o.dead && o.owner === t; }).length;
+      if (mine < 6) { spawnAround(t, u.summon, Math.min(3, 6 - mine), .8); t.atk = now(); sfx('heal'); } } }
   if (u.burrow) return digTick(t, u, dt);
   if (u.air) return flyTick(t, u, dt);
   // fight back against a cat guard close by
-  var cat = alive(R.troops).filter(function (o) { return o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); })[0];
+  var cat = u.hit === 'blast' ? null : alive(R.troops).filter(function (o) { return o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); })[0];
   if (cat) { var cd = Math.hypot(cat.x - t.x, cat.y - t.y); t.face = Math.atan2(cat.y - t.y, cat.x - t.x);
     if (cd > u.range + .45) return step(t, cat.x, cat.y, u.speed, dt); return attack(t, cat, u); }
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); t.path = t.target ? findPath(t, t.target, u.range) : null; t.wall = null; }
@@ -172,8 +179,9 @@ function troopTick(t, dt) {
 // Flyers: straight over walls and buildings to the target; only anti-air defenses can hit them, cats can't reach
 function flyTick(t, u, dt) {
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); if (!t.target) return; }
+  if (u.rage) t.rage = !R.troops.some(function (o) { return o !== t && !o.dead && o.side === 'duck' && U[o.kind].air && Math.hypot(o.x - t.x, o.y - t.y) < 4; });
   var c = center(t.target), d = rectDist(t.x, t.y, t.target);
-  if (d > u.range + .12) { var s = B[t.target.k].size; return step(t, u.range < 1 ? c.x : clamp(t.x, t.target.x, t.target.x + s), u.range < 1 ? c.y : clamp(t.y, t.target.y, t.target.y + s), u.speed, dt); }
+  if (d > u.range + .12) { var s = B[t.target.k].size; return step(t, u.range < 1 ? c.x : clamp(t.x, t.target.x, t.target.x + s), u.range < 1 ? c.y : clamp(t.y, t.target.y, t.target.y + s), u.speed * (t.rage ? 1.25 : 1), dt); }
   t.face = Math.atan2(c.y - t.y, c.x - t.x); attack(t, t.target, u);
 }
 // Digger: travels underground in a straight line (walls don't matter, nothing can hit it), pops up at the target.
@@ -188,6 +196,24 @@ function digTick(t, u, dt) {
   if (t.under) { t.under = false; t.born = now(); t.cool = .35; sfx('surface'); emitSmoke(t.x, t.y, .1, 'dust', .6, 6); return; }   // burst out of the ground
   var c = center(t.target); t.face = Math.atan2(c.y - t.y, c.x - t.x); attack(t, t.target, u);
 }
+// wall-breaker duck: one big bang that wrecks walls (x40) and nearby buildings, and the duck with it
+function blast(t, u, dmg) {
+  R.buildings.forEach(function (b) { if (!b.dead && rectDist(t.x, t.y, b) <= u.splash) damage(b, dmg, t); });
+  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .9, max: .9, size: 1.4 }); sfx('cracker'); sfx('crash');
+  t.hp = 0; t.dead = true; t.deadAt = now();
+}
+// mop duck: the spin hits every building and cat around it
+function spinHit(t, dmg) {
+  var r = U[t.kind].spin;
+  R.buildings.forEach(function (b) { if (!b.dead && rectDist(t.x, t.y, b) <= r) damage(b, dmg, t); });
+  R.troops.forEach(function (o) { if (!o.dead && o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) <= r + .3) damage(o, dmg, t); });
+  R.fx.push({ t: 'splat', x: t.x, y: t.y, life: .4, max: .4, kind: 'water', size: r });
+}
+function spawnAround(t, kind, n, r) { // witch's ducklings, the fan's little fans
+  var u = U[kind];
+  for (var i = 0; i < n; i++) { var a = i / n * 6.283 + Math.random() * .4, x = clamp(t.x + Math.cos(a) * r, .3, MAP - .3), y = clamp(t.y + Math.sin(a) * r, .3, MAP - .3);
+    R.troops.push({ side: 'duck', kind: kind, x: x, y: y, hp: u.hp, max: u.hp, cool: .4, dir: 2, born: now(), owner: t }); R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5 }); }
+}
 function step(t, x, y, speed, dt) {
   var dx = x - t.x, dy = y - t.y, d = Math.hypot(dx, dy); if (d < 1e-3) return;
   var m = Math.min(d, speed * dt); t.x += dx / d * m; t.y += dy / d * m; t.moving = true; t.face = Math.atan2(dy, dx); t.walk = (t.walk || 0) + m;
@@ -195,6 +221,9 @@ function step(t, x, y, speed, dt) {
 function attack(t, target, u) {
   if (t.cool > 0) return; t.cool = u.rate; t.atk = now();
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind);
+  if (t.rage) dmg *= 1.5;
+  if (u.hit === 'blast') { blast(t, u, dmg); return; }
+  if (u.hit === 'magic') { sfx('heal'); shoot(t, target, 'magic', dmg, 0, 8, t.x, t.y, .9); return; }
   if (u.hit === 'cracker') { sfx('shot'); shoot(t, target, 'cracker', dmg, u.splash, 5, t.x, t.y, 1.9); return; }
   if (u.hit === 'shot' || u.hit === 'fire') { sfx(u.hit === 'fire' ? 'fire' : 'shot'); shoot(t, target, u.hit === 'fire' ? 'chili' : 'pebble', dmg, u.splash, 9, t.x, t.y, .7); return; }
   t.pend = { target: target, dmg: dmg, left: .23, kind: u.hit }; if (t.side === 'cat') sfx('hiss');   // the blow lands when the swing does

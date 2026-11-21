@@ -99,8 +99,9 @@ function armyMenu() {
     if (D.queue.length) { var f = h('button', 'btn gold', 'ฝึกเสร็จทันที ' + costTag('coin', coinsFor(D.queue[D.queue.length - 1].until - now()))); f.onclick = function () { finishTraining(); armyMenu(); hud(); }; body.appendChild(f); }
     var grid = h('div', 'cards');
     Object.keys(U).forEach(function (k) {
+      if (U[k].hidden) return;
       var u = U[k], locked = (u.unlock || 1) > barracksLv(), card = h('button', 'card troop' + (locked ? ' off' : ''));
-      card.innerHTML = '<span class="n">' + (D.army[k] || 0) + '</span><span class="portrait p-' + u.art + '"></span><b>' + u.name + '</b>' +
+      card.innerHTML = '<span class="n">' + (D.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + u.art + '.webp)"></span><b>' + u.name + '</b>' +
         (locked ? '<small>ลานฝึกเลเวล ' + u.unlock + '</small>' : costTag(u.res, u.cost) + '<small>🏠' + u.space + ' · ⏱' + u.time + 'ว.</small>');
       card.onclick = function () { if (locked) { toast('อัปเกรดลานฝึกเป็ดเป็นเลเวล ' + u.unlock); return; } train(k); armyMenu(); hud(); };
       grid.appendChild(card);
@@ -127,7 +128,7 @@ function raidBar() {
   var bar = $('troops'); bar.innerHTML = '';
   Object.keys(R.army).forEach(function (k) {
     if (!(R.army[k] > 0) && R.pick !== k) return;
-    var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait p-' + U[k].art + '"></span><small>' + U[k].name + '</small>');
+    var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + U[k].art + '.webp)"></span><small>' + U[k].name + '</small>');
     c.onclick = function () { if (R.army[k] > 0) { R.pick = k; raidBar(); } }; bar.appendChild(c);
   });
 }
