@@ -1110,19 +1110,25 @@ if COL:
 
 
 if VARIANT == "balloon":
+    # The joke: the bag got tied to its foot and carried it off, so it never stops struggling up there:
+    # wings flapping wildly, free leg kicking, body twisting, beak squawking, bag tugging and swaying.
     for nm in ("Idle", "Walk"):
         bpy.data.actions.remove(bpy.data.actions[nm])
+    def struggle(f, ph, lean):
+        # the atlas samples only 4 idle / 8 walk frames per loop, so use frequencies that don't vanish at those phases
+        flap = math.sin(ph * 3 + 0.6); kick = math.sin(ph * 2 + 0.9); tw = math.sin(ph + 0.5)
+        full(f, {"root": {"l": (0, 0, 0.06 * math.sin(ph * 2)), "r": (lean + 6 * math.sin(ph * 2), 10 * tw, 12 * math.sin(ph))},
+                 "bag": {"r": (5 * math.sin(ph * 2 + 1), 6 * math.sin(ph + 2), 0), "s": (1 + 0.05 * math.sin(ph * 2 + 1.2), 1 - 0.06 * math.sin(ph * 2 + 1.2), 1 + 0.05 * math.sin(ph * 2 + 1.2))},
+                 "body": {"r": (8 * kick, 0, 16 * tw), "s": (1 + 0.06 * flap, 1 - 0.07 * flap, 1 + 0.06 * flap)},
+                 "head": {"r": (-14 + 12 * math.sin(ph * 3 + 1.3), 0, 25 * math.sin(ph * 2 + 0.5))},
+                 "jaw": {"r": (22 + 18 * abs(math.sin(ph * 3 + 1.3)), 0, 0)},
+                 "wing.L": {"r": (0, 0, -55 - 45 * flap)}, "wing.R": {"r": (0, 0, 55 + 45 * flap)},
+                 "leg.L": {"r": (4 * kick, 0, 0)}, "leg.R": {"r": (-55 * kick, 0, 15 * tw), "s": (1, 1 + 0.15 * abs(kick), 1)},
+                 "tail": {"r": (0, 0, 30 * math.sin(ph * 3 + 2))}})
     new_action("Idle")
-    for f in range(0, 49, 4):
-        ph = 2 * math.pi * f / 48
-        full(f + 1, {"root": {"l": (0, 0, 0.05 * math.sin(ph))}, "bag": {"s": (1 + 0.04 * math.sin(ph + 1.2), 1 - 0.05 * math.sin(ph + 1.2), 1 + 0.04 * math.sin(ph + 1.2)), "r": (4 * math.sin(ph * 2), 0, 0)},
-                     "body": {"r": (0, 0, 5 * math.sin(ph))}, "head": {"r": (0, 0, 14 * math.sin(ph))}, "wing.L": {"r": (0, 0, -10 * math.sin(ph * 2))}, "wing.R": {"r": (0, 0, 10 * math.sin(ph * 2))}})
+    for f in range(0, 49, 2): struggle(f + 1, 2 * math.pi * f / 48, 0)
     new_action("Walk")
-    for f in range(0, 25, 3):
-        ph = 2 * math.pi * f / 24
-        full(f + 1, {"root": {"l": (0, 0, 0.06 * math.sin(ph)), "r": (10, 0, 4 * math.sin(ph))}, "bag": {"r": (-6 + 3 * math.sin(ph), 0, 0), "s": (1 + 0.05 * math.sin(ph * 2), 1 - 0.06 * math.sin(ph * 2), 1 + 0.05 * math.sin(ph * 2))},
-                     "body": {"r": (6, 0, 6 * math.sin(ph))}, "leg.L": {"r": (5 * math.sin(ph * 2), 0, 0)}, "leg.R": {"r": (-35 * math.sin(ph * 2), 0, 0)},
-                     "wing.L": {"r": (0, 0, -30 - 25 * abs(math.sin(ph * 2)))}, "wing.R": {"r": (0, 0, 30 + 25 * abs(math.sin(ph * 2)))}})
+    for f in range(0, 25, 2): struggle(f + 1, 2 * math.pi * f / 24, 10)
 
 if VARIANT in FLYERS:
     for nm in ("Idle", "Walk"):
