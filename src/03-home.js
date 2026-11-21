@@ -36,14 +36,14 @@ function homeTick() {
       add += rate(b) * (dt + boosted); } });
     D.res[r] = Math.min(capacity(r), D.res[r] + add);
   });
-  D.buildings.forEach(function (b) { if (b.up && b.up.until <= t) { b.lv = b.up.to; delete b.up; b.pop = now(); toast(B[b.k].name + ' เลเวล ' + b.lv + ' เสร็จแล้ว!'); buzz('success'); dirty = true; } });
+  D.buildings.forEach(function (b) { if (b.up && b.up.until <= t) { b.lv = b.up.to; delete b.up; b.pop = now(); toast(B[b.k].name + ' เลเวล ' + b.lv + ' เสร็จแล้ว!'); sfx('done'); buzz('success'); dirty = true; } });
   while (D.queue.length && D.queue[0].until <= t) {
-    var q = D.queue.shift(); D.army[q.k] = (D.army[q.k] || 0) + 1; dirty = true;
+    var q = D.queue.shift(); D.army[q.k] = (D.army[q.k] || 0) + 1; dirty = true; sfx('quack');
     if (D.queue.length) D.queue[0].until = Math.max(D.queue[0].until, t);
   }
 }
 function canPay(r, n) { return D.res[r] >= n; }
-function pay(r, n) { if (!canPay(r, n)) { toast(RES[r].name + 'ไม่พอ'); buzz('heavy'); return false; } D.res[r] -= n; return true; }
+function pay(r, n) { if (!canPay(r, n)) { toast(RES[r].name + 'ไม่พอ'); sfx('error'); buzz('heavy'); return false; } D.res[r] -= n; if (r === 'coin') sfx('coin'); return true; }
 function coinsFor(ms) { return Math.max(1, Math.ceil(ms / 60000)); }   // 1 duck coin per remaining minute
 
 function footprintFree(k, x, y, ignoreId) {
@@ -68,7 +68,7 @@ function upgradeBuilding(b) {
   if (!pay(d.res, bCost(b.k, to))) return false;
   var t = bTime(b.k, to);
   if (t > 0) b.up = { to: to, until: now() + t * 1000, start: now() }; else { b.lv = to; b.pop = now(); }
-  writeSave(); buzz('medium'); return true;
+  writeSave(); sfx('build'); buzz('medium'); return true;
 }
 function finishNow(b) {
   if (!b.up) return; var c = coinsFor(b.up.until - now());
@@ -79,7 +79,7 @@ function train(k) {
   if (armyUsed(true) + u.space > armySpace()) { toast('ค่ายพักเต็ม'); return; }
   if (!pay(u.res, u.cost)) return;
   var start = D.queue.length ? D.queue[D.queue.length - 1].until : now();
-  D.queue.push({ k: k, until: start + u.time * 1000 }); writeSave(); buzz('light');
+  D.queue.push({ k: k, until: start + u.time * 1000 }); writeSave(); sfx('train'); buzz('light');
 }
 function finishTraining() {
   if (!D.queue.length) return; var c = coinsFor(D.queue[D.queue.length - 1].until - now());
@@ -100,12 +100,12 @@ function fillWithCoins(r) {
   var miss = fillMissing(r), c = fillCoins(r);
   if (!miss) { toast('คลัง' + RES[r].name + 'เต็มอยู่แล้ว'); return false; }
   if (D.res.coin < c) { toast('เหรียญเป็ดไม่พอ'); buzz('heavy'); return false; }
-  D.res.coin -= c; D.res[r] += miss; buzz('success'); toast('🪙 เติม' + RES[r].name + ' +' + fmt(miss) + ' เต็มคลังแล้ว!');
+  D.res.coin -= c; D.res[r] += miss; sfx('coin'); buzz('success'); toast('🪙 เติม' + RES[r].name + ' +' + fmt(miss) + ' เต็มคลังแล้ว!');
   D.buildings.forEach(function (b) { var d = B[b.k]; if ((d.kind === 'store' && d.store === r) || (d.kind === 'make' && d.make === r)) b.pop = now(); });
   writeSave(); dirty = true; return true;
 }
 function videosLeft() { var day = new Date().toDateString(); if (D.vidDay !== day) { D.vidDay = day; D.vids = 0; } return VIDEO_PER_DAY - (D.vids || 0); }
-function applyBoost(b) { b.boost = Math.max(now(), b.boost || 0) + BOOST_MS; b.pop = now(); buzz('success'); toast('⚡ ' + B[b.k].name + ' ผลิตเร็ว x2 นาน 1 ชั่วโมง'); writeSave(); dirty = true; }
+function applyBoost(b) { b.boost = Math.max(now(), b.boost || 0) + BOOST_MS; b.pop = now(); sfx('boost'); buzz('success'); toast('⚡ ' + B[b.k].name + ' ผลิตเร็ว x2 นาน 1 ชั่วโมง'); writeSave(); dirty = true; }
 function boostWithVideo(b, done) {
   if (videosLeft() <= 0) { toast('ดูวิดีโอครบ ' + VIDEO_PER_DAY + ' ครั้งแล้ววันนี้'); return; }
   showRewardedVideo(function (ok) { if (!ok) { toast('ต้องดูวิดีโอจนจบถึงได้รางวัล'); return; } D.vids = (D.vids || 0) + 1; applyBoost(b); if (done) done(); });

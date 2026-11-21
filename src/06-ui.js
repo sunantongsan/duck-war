@@ -122,7 +122,7 @@ function attackMenu() {
     body.appendChild(grid);
   });
 }
-function enterRaid(n) { startRaid(n); screen = 'raid'; selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
+function enterRaid(n) { startRaid(n); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
 function raidBar() {
   var bar = $('troops'); bar.innerHTML = '';
   Object.keys(R.army).forEach(function (k) {
@@ -137,10 +137,22 @@ function raidHud() {
     '<span>⏱ ' + clock(R.time * 1000) + '</span><span>' + icon('honey') + fmt(R.taken.honey) + ' ' + icon('veggie') + fmt(R.taken.veggie) + (R.lootTotal.syrup ? ' ' + icon('syrup') + fmt(R.taken.syrup) : '') + '</span>';
 }
 function showResult() {
-  var r = R.result; openSheet(r.stars ? 'ชนะ!' : 'แพ้แล้ว', function (body) {
+  var r = R.result; sfx(r.stars ? 'win' : 'lose'); openSheet(r.stars ? 'ชนะ!' : 'แพ้แล้ว', function (body) {
     body.appendChild(h('div', 'result-stars', '★★★'.slice(0, r.stars) + '<em>' + '★★★'.slice(r.stars) + '</em>'));
     body.appendChild(h('p', 'result', 'ทำลาย ' + Math.floor(r.pct * 100) + '% · ได้ ' + icon('honey') + fmt(r.got.honey) + ' ' + icon('veggie') + fmt(r.got.veggie) + (r.got.syrup ? ' ' + icon('syrup') + fmt(r.got.syrup) : '') + (r.coins ? ' ' + icon('coin') + r.coins : '')));
     var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = goHome; body.appendChild(b);
   });
 }
 function goHome() { closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
+
+// ---------- sound settings ----------
+function soundMenu() {
+  openSheet('เสียง', function (body) {
+    var row = h('div', 'p-row sound-row');
+    var a = h('button', 'btn ' + (SND.on ? 'green' : ''), (SND.on ? '🔊' : '🔇') + ' เสียงเอฟเฟกต์ ' + (SND.on ? 'เปิด' : 'ปิด')); a.onclick = function () { setSound(!SND.on); soundMenu(); sfx('quack'); };
+    var m = h('button', 'btn ' + (SND.music ? 'green' : ''), '🎵 เพลง ' + (SND.music ? 'เปิด' : 'ปิด')); m.onclick = function () { setMusic(!SND.music); soundMenu(); };
+    row.appendChild(a); row.appendChild(m); body.appendChild(row);
+  });
+  $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
+}
+document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button')) sfx('tap'); }, true);

@@ -35,7 +35,7 @@ var U = {
   fork:   { name: 'เป็ดส้อม',        art: 'fork',   h: 0.95, space: 1, cost: 25,  res: 'veggie', time: 5,  hp: 45,  dmg: 9,  rate: 1,   range: 0.5, speed: 1.6, pref: 'any',      hit: 'stab' },
   sling:  { name: 'เป็ดหนังสติ๊ก',    art: 'sling',  h: 0.95, space: 1, cost: 50,  res: 'veggie', time: 6,  hp: 22,  dmg: 8,  rate: 1,   range: 3.5, speed: 1.5, pref: 'any',      hit: 'shot', air: false, shootsAir: true, unlock: 2 },
   giant:  { name: 'เป็ดยักษ์กระทะ',   art: 'giant',  h: 1.35, space: 5, cost: 250, res: 'veggie', time: 30, hp: 320, dmg: 12, rate: 2,   range: 0.6, speed: 0.75, pref: 'defense', hit: 'smash', unlock: 3 },
-  digger: { name: 'เป็ดขุดดิน',       art: 'digger', h: 0.95, space: 1, cost: 40,  res: 'veggie', time: 7,  hp: 30,  dmg: 12, rate: 1,   range: 0.5, speed: 2.2, pref: 'resource', hit: 'stab', unlock: 4 },
+  digger: { name: 'เป็ดขุดดิน',       art: 'digger', h: 0.95, space: 1, cost: 40,  res: 'veggie', time: 7,  hp: 30,  dmg: 12, rate: 1,   range: 0.5, speed: 2.2, pref: 'resource', hit: 'stab', burrow: true, unlock: 4 },   // tunnels under walls, can't be hit while underground
   pot:    { name: 'เป็ดหม้อ',          art: 'pot',    h: 1.1,  space: 2, cost: 100, res: 'veggie', time: 12, hp: 120, dmg: 18, rate: 1.4, range: 0.5, speed: 1.1, pref: 'wall',     hit: 'smash', wallBonus: 10, unlock: 5 },
   nurse:  { name: 'เป็ดพยาบาล',       art: 'nurse',  h: 1.0,  space: 4, cost: 500, res: 'veggie', time: 40, hp: 150, dmg: 0,  heal: 18, rate: 1, range: 2.5, speed: 1.4, pref: 'heal', hit: 'heal', unlock: 6 },
   chef:   { name: 'เป็ดเชฟพริก',       art: 'chef',   h: 1.0,  space: 4, cost: 600, res: 'veggie', time: 40, hp: 75,  dmg: 50, rate: 1.5, range: 3, speed: 1.4, pref: 'any', hit: 'fire', splash: 1, unlock: 7 },

@@ -43,6 +43,12 @@ for (const lv of [2,6,12]) { g('D.army={fork:5};startRaid('+lv+');');
   const inside=g('(function(){var hq=R.buildings.find(b=>b.k==="hq");return [hq.x-1.5,hq.y+1.5].concat([hq.x+5,hq.y+1.5])})()');
   ok(g('!canDeploy('+inside[0]+','+inside[1]+')&&!canDeploy('+inside[2]+','+inside[3]+')&&canDeploy(1,1)&&canDeploy('+(40-1)+',20)'),'level '+lv+': no landing inside the walls, fine outside'); }
 ok(g('MAP')===40,'map is 40x40');
+// diggers tunnel under the walls and can't be shot while underground
+g('D.army={digger:10};startRaid(6);R.pick="digger";for(var i=0;i<10;i++)deploy(2,15+i);var wallHp=R.buildings.filter(b=>b.k==="wall").reduce((a,b)=>a+b.hp,0),sawUnder=false,hitUnder=false;');
+for(let i=0;i<40*20;i++){g('raidTick(0.05);R.troops.forEach(t=>{if(t.under){sawUnder=true;if(t.hp<t.max&&!t.wasHit)hitUnder=true;}})');}
+ok(g('sawUnder'),'diggers go underground');
+ok(g('R.buildings.filter(b=>b.k==="wall").reduce((a,b)=>a+b.hp,0)===wallHp'),'diggers pass walls without breaking them');
+ok(g('R.buildings.some(b=>b.hp<b.max&&/store|make/.test(B[b.k].kind))'),'diggers surface and hit resource buildings');
 // production boost: x2 only for the boosted hour, coins charged
 g('D.res.honey=0;var pm=D.buildings.find(b=>b.k==="honeypump");pm.up=null;delete pm.boost;D.t=Date.now()-3600000;homeTick();');
 const base=g('D.res.honey');
