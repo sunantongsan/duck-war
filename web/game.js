@@ -408,25 +408,44 @@ function showRewardedVideo(cb) {
   (function tick() { o.innerHTML = '<div>📺 วิดีโอโฆษณา (ตัวอย่างสำหรับทดสอบ)</div><b>' + left + '</b>'; if (left-- > 0) setTimeout(tick, 1000); else { o.remove(); cb(true); } })();
 }
 
-// ---------- the colonel: strolls round the duck house, stops to look about ----------
+// ---------- the colonel: patrols the whole base, building by building; salutes the defenses he inspects ----------
 var COLONEL = null;
 function colonelTick(dt) {
   var hq = D.buildings.find(function (b) { return b.k === 'hq'; }); if (!hq) return;
   var hc = { x: hq.x + 1.5, y: hq.y + 1.5 };
   if (!COLONEL) COLONEL = { side: 'hero', kind: 'colonel', x: hc.x + 2.8, y: hc.y + .4, face: 2.36, hp: 1, max: 1, wait: 1 };
   var c = COLONEL; c.moving = false;
+  if (onFootprint(c.x, c.y)) { var sp = openSpot(c.x, c.y); if (sp) { c.x = sp.x; c.y = sp.y; c.path = null; } }   // a building was put on top of him
+  if (c.salutes > 0 && now() - c.atk > 560) { c.salutes--; c.atk = now(); }   // a proper salute: two snaps
   if (c.wait > 0) { c.wait -= dt; return; }
-  if (!c.goal) {
-    for (var i = 0; i < 20 && !c.goal; i++) { var a = Math.random() * 6.28, r = 2.6 + Math.random() * 2.2, g = { x: hc.x + Math.cos(a) * r, y: hc.y + Math.sin(a) * r };
-      if (g.x > .5 && g.y > .5 && g.x < MAP - .5 && g.y < MAP - .5 && !insideBuilding(g.x, g.y)) c.goal = g; }
-    if (!c.goal) { c.wait = 1; return; }
+  if (!c.path || !c.path.length) {
+    if (c.visit) { c.face = Math.atan2(c.visit.y - c.y, c.visit.x - c.x); // arrived: look at the building, salute a defense (and sometimes the rest)
+      var def = B[c.visit.k].kind === 'defense'; if (def ? Math.random() < .8 : Math.random() < .25) { c.atk = now(); c.salutes = 1; if (def && Math.random() < .3) sfx('colonel'); }
+      c.visit = null; c.wait = 1.8 + Math.random() * 2.5; dirty = true; return; }
+    colonelPlan(c); if (!c.path) c.wait = 1; return;
   }
-  var dx = c.goal.x - c.x, dy = c.goal.y - c.y, d = Math.hypot(dx, dy), st = HEROES.colonel.speed * dt;
-  if (d < .05) { c.goal = null; c.wait = 1.5 + Math.random() * 3; if (Math.random() < .4) c.atk = now(); return; }   // pause, sometimes a salute
-  var nx = c.x + dx / d * Math.min(st, d), ny = c.y + dy / d * Math.min(st, d);
-  if (insideBuilding(nx, ny)) { c.goal = null; c.wait = .5; return; }
-  c.x = nx; c.y = ny; c.face = Math.atan2(dy, dx); c.moving = true; c.walk = (c.walk || 0) + st; dirty = true;
+  var wp = c.path[0], dx = wp.x - c.x, dy = wp.y - c.y, d = Math.hypot(dx, dy), st = HEROES.colonel.speed * dt;
+  if (d < .08) { c.path.shift(); return; }
+  c.x += dx / d * Math.min(st, d); c.y += dy / d * Math.min(st, d); c.face = Math.atan2(dy, dx); c.moving = true; c.walk = (c.walk || 0) + Math.min(st, d); dirty = true;
 }
+// pick a building anywhere on the base (defenses more often), walk to open ground next to it along a tile path round the buildings
+function colonelPlan(c) {
+  var list = D.buildings.filter(function (b) { return b.k !== 'wall' && b !== c.last; }); if (!list.length) return;
+  var w = list.map(function (b) { return B[b.k].kind === 'defense' ? 3 : 1; }), tot = w.reduce(function (a, b) { return a + b; }, 0), r = Math.random() * tot, pick = list[0];
+  for (var i = 0; i < list.length; i++) { r -= w[i]; if (r <= 0) { pick = list[i]; break; } }
+  var blocked = new Uint8Array(MAP * MAP); D.buildings.forEach(function (b) { var s = B[b.k].size; for (var x = b.x; x < b.x + s; x++) for (var y = b.y; y < b.y + s; y++) if (x >= 0 && y >= 0 && x < MAP && y < MAP) blocked[y * MAP + x] = 1; });
+  var s = B[pick.k].size, goals = {};
+  for (var gx = pick.x - 1; gx <= pick.x + s; gx++) for (var gy = pick.y - 1; gy <= pick.y + s; gy++) if (gx >= 1 && gy >= 1 && gx < MAP - 1 && gy < MAP - 1 && !blocked[gy * MAP + gx]) goals[gy * MAP + gx] = 1;
+  var sx = clamp(Math.floor(c.x), 0, MAP - 1), sy = clamp(Math.floor(c.y), 0, MAP - 1), start = sy * MAP + sx, prev = new Int32Array(MAP * MAP).fill(-2), q = [start], end = -1; prev[start] = -1;
+  while (q.length && end < 0) { var cur = q.shift(); if (goals[cur]) { end = cur; break; } var cx = cur % MAP, cy = (cur / MAP) | 0;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (dd) { var nx = cx + dd[0], ny = cy + dd[1]; if (nx < 1 || ny < 1 || nx >= MAP - 1 || ny >= MAP - 1) return; var n = ny * MAP + nx; if (prev[n] !== -2 || blocked[n]) return; prev[n] = cur; q.push(n); }); }
+  if (end < 0) { c.last = pick; return; }
+  var path = []; for (var p = end; p >= 0 && p !== start; p = prev[p]) path.unshift({ x: p % MAP + .5 + (Math.random() - .5) * .3, y: ((p / MAP) | 0) + .5 + (Math.random() - .5) * .3 });
+  for (var k = path.length - 2; k > 0; k--) { var A = path[k - 1], Bp = path[k + 1]; if (Math.abs(A.x - Bp.x) < .6 || Math.abs(A.y - Bp.y) < .6) path.splice(k, 1); }   // drop the middle of straight runs
+  c.path = path; c.last = pick; c.visit = { k: pick.k, x: pick.x + s / 2, y: pick.y + s / 2 };
+}
+function onFootprint(x, y) { return D.buildings.some(function (b) { var s = B[b.k].size; return x > b.x && y > b.y && x < b.x + s && y < b.y + s; }); }
+function openSpot(x, y) { for (var r = 1; r < 8; r++) for (var i = 0; i < 16; i++) { var a = i / 16 * 6.283, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (px > 1 && py > 1 && px < MAP - 1 && py < MAP - 1 && !insideBuilding(px, py)) return { x: px, y: py }; } return null; }
 function insideBuilding(x, y) { return D.buildings.some(function (b) { var s = B[b.k].size; return x > b.x - .45 && y > b.y - .45 && x < b.x + s + .45 && y < b.y + s + .45; }); }
 var COLONEL_LINES = ['ทหารเป็ด! เตรียมพร้อม!', 'แมวจะไม่ได้แตะไข่ของเราแม้แต่ฟองเดียว', 'อัปเกรดฐานให้แข็งแรงไว้นะ', 'ก๊าบ! ผู้พันตรวจแถว', 'น้ำผึ้งพร้อม น้ำผักพร้อม บุกได้!'];
 
@@ -905,7 +924,7 @@ function drawTroop(t) {
   ctx.save(); ctx.globalAlpha = alpha;
   if (u.hero && !t.dead) { // a gold ring on the ground marks a hero; the colonel's shows how far his leadership reaches
     var rr = (u.aura || .75) * cam.s; ctx.strokeStyle = 'rgba(255,205,60,' + (u.aura ? .45 : .7) + ')'; ctx.lineWidth = 2.5; ctx.setLineDash(u.aura ? [8, 6] : []);
-    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr * H * 2, rr * H * 2 * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr, rr * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   if (t.fast > n && !t.dead) { ctx.fillStyle = 'rgba(255,120,40,.22)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .55 * cam.s, .3 * cam.s, 0, 0, 7); ctx.fill(); }
   var sh = u.air ? .14 : .32; ctx.fillStyle = u.air ? 'rgba(30,60,30,.18)' : 'rgba(30,60,30,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, sh * cam.s * Math.min(u.h, 1.6), sh * .5 * cam.s * Math.min(u.h, 1.6), 0, 0, 7); ctx.fill();
   ctx.translate(p.x + ox, p.y + oy); ctx.scale(sx, sy);
@@ -1236,7 +1255,7 @@ input.tap = function (w) {
     if (placing) { var s = B[placing.k].size; placing.x = Math.round(w.x - s / 2); placing.y = Math.round(w.y - s / 2); placing.last = null; dirty = true; return; }
     if (moving) { cancelMove(); }   // tapping away from a red, unplaced move puts the buildings back
     if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < 1.3) { // tap the colonel: he salutes and says something
-      COLONEL.atk = now(); COLONEL.wait = 2; COLONEL.goal = null; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
+      COLONEL.atk = now(); COLONEL.salutes = 1; COLONEL.wait = 2; COLONEL.face = Math.PI / 4; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; sfx('tap'); buzz('light'); } dirty = true;
   } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
 };
@@ -1264,6 +1283,14 @@ function frame(t) {
   draw(dt);
   requestAnimationFrame(frame);
 }
+function rangeRing(b) {
+  var d = B[b.k], s = d.size, c = toScreen(b.x + s / 2, b.y + s / 2), t = now() / 1000;
+  function ring(r) { ctx.beginPath(); ctx.ellipse(c.x, c.y, r * cam.s, r * cam.s * ISO, 0, 0, 7); }
+  ctx.save(); ring(d.range); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -t * 12; ctx.stroke();
+  if (d.minRange) { ring(d.minRange); ctx.fillStyle = 'rgba(255,80,60,.13)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,90,70,.45)'; ctx.stroke(); }
+  ctx.restore(); dirty = true;
+}
 function draw(dt) {
   FDT = dt || 0; ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
   drawGround();
@@ -1275,6 +1302,9 @@ function draw(dt) {
     sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
   }
   if (screen === 'home' && !moving) selection().forEach(function (b) { tileDiamond(b.x, b.y, B[b.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)'); });
+  // a defense that is tapped, being placed or moved shows how far it reaches: faint ring on the grass (and the mortar's blind spot)
+  if (screen === 'home') { var rings = []; if (placing) rings.push(placing); if (moving) moving.items.forEach(function (i) { rings.push({ k: i.b.k, x: i.x, y: i.y }); }); else if (selected) rings.push(selected);
+    rings.forEach(function (b) { if (B[b.k].kind === 'defense') rangeRing(b); }); }
   var mvOk = moving ? moveOk(moving) : true;
   if (screen === 'home' && moving) moving.items.forEach(function (i) { tileDiamond(i.x, i.y, B[i.b.k].size, mvOk ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.4)', mvOk ? '#5fe07a' : '#ff5a5a'); });
   if (screen === 'home' && placing) { var pok = footprintFree(placing.k, placing.x, placing.y);

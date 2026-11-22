@@ -85,7 +85,9 @@ g('D.res.honey=100;var c0=D.res.coin,fc=fillCoins("honey");fillWithCoins("honey"
 ok(g('D.res.honey===capacity("honey")&&c0-D.res.coin===fc&&fc>0'),'coins fill honey storage instantly');
 ok(g('fillCoins("honey")===0&&fillWithCoins("honey")===false'),'full storage costs nothing');
 ok(g('videosLeft()')===5,'5 videos a day');
-g('colonelTick(0.1);for(let i=0;i<200;i++)colonelTick(0.1);');ok(g('!!COLONEL&&!insideBuilding(COLONEL.x,COLONEL.y)'),'colonel strolls outside buildings');
+g('colonelTick(0.1);for(let i=0;i<200;i++)colonelTick(0.1);');ok(g('!!COLONEL&&!onFootprint(COLONEL.x,COLONEL.y)'),'colonel strolls outside buildings');
+g('var seen=new Set(),far=0,sal=0,hc=hqCenter();COLONEL.wait=0;for(let i=0;i<6000;i++){colonelTick(0.1);if(COLONEL.visit)seen.add(COLONEL.visit.k);far=Math.max(far,Math.hypot(COLONEL.x-hc.x,COLONEL.y-hc.y));if(COLONEL.atk&&now()-COLONEL.atk<5)sal++;if(onFootprint(COLONEL.x,COLONEL.y))far=-99;}');
+ok(g('seen.size')>=4&&g('far')>5,'colonel patrols the whole base ('+g('seen.size')+' kinds of building, '+g('far').toFixed(1)+' tiles from the duck house) without walking through buildings');
 // the rest of the roster
 g('D.army={bomber:4};startRaid(6);R.pick="bomber";for(var i=0;i<4;i++)deploy(4,18+i*.5);var w0=R.buildings.filter(b=>b.k==="wall"&&b.dead).length;');
 for(let i=0;i<25*20;i++)g('raidTick(0.05)');

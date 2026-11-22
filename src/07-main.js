@@ -9,7 +9,7 @@ input.tap = function (w) {
     if (placing) { var s = B[placing.k].size; placing.x = Math.round(w.x - s / 2); placing.y = Math.round(w.y - s / 2); placing.last = null; dirty = true; return; }
     if (moving) { cancelMove(); }   // tapping away from a red, unplaced move puts the buildings back
     if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < 1.3) { // tap the colonel: he salutes and says something
-      COLONEL.atk = now(); COLONEL.wait = 2; COLONEL.goal = null; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
+      COLONEL.atk = now(); COLONEL.salutes = 1; COLONEL.wait = 2; COLONEL.face = Math.PI / 4; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; sfx('tap'); buzz('light'); } dirty = true;
   } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
 };
@@ -37,6 +37,14 @@ function frame(t) {
   draw(dt);
   requestAnimationFrame(frame);
 }
+function rangeRing(b) {
+  var d = B[b.k], s = d.size, c = toScreen(b.x + s / 2, b.y + s / 2), t = now() / 1000;
+  function ring(r) { ctx.beginPath(); ctx.ellipse(c.x, c.y, r * cam.s, r * cam.s * ISO, 0, 0, 7); }
+  ctx.save(); ring(d.range); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 2; ctx.setLineDash([10, 7]); ctx.lineDashOffset = -t * 12; ctx.stroke();
+  if (d.minRange) { ring(d.minRange); ctx.fillStyle = 'rgba(255,80,60,.13)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,90,70,.45)'; ctx.stroke(); }
+  ctx.restore(); dirty = true;
+}
 function draw(dt) {
   FDT = dt || 0; ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
   drawGround();
@@ -48,6 +56,9 @@ function draw(dt) {
     sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
   }
   if (screen === 'home' && !moving) selection().forEach(function (b) { tileDiamond(b.x, b.y, B[b.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)'); });
+  // a defense that is tapped, being placed or moved shows how far it reaches: faint ring on the grass (and the mortar's blind spot)
+  if (screen === 'home') { var rings = []; if (placing) rings.push(placing); if (moving) moving.items.forEach(function (i) { rings.push({ k: i.b.k, x: i.x, y: i.y }); }); else if (selected) rings.push(selected);
+    rings.forEach(function (b) { if (B[b.k].kind === 'defense') rangeRing(b); }); }
   var mvOk = moving ? moveOk(moving) : true;
   if (screen === 'home' && moving) moving.items.forEach(function (i) { tileDiamond(i.x, i.y, B[i.b.k].size, mvOk ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.4)', mvOk ? '#5fe07a' : '#ff5a5a'); });
   if (screen === 'home' && placing) { var pok = footprintFree(placing.k, placing.x, placing.y);

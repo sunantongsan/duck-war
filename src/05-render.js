@@ -150,7 +150,7 @@ function drawTroop(t) {
   ctx.save(); ctx.globalAlpha = alpha;
   if (u.hero && !t.dead) { // a gold ring on the ground marks a hero; the colonel's shows how far his leadership reaches
     var rr = (u.aura || .75) * cam.s; ctx.strokeStyle = 'rgba(255,205,60,' + (u.aura ? .45 : .7) + ')'; ctx.lineWidth = 2.5; ctx.setLineDash(u.aura ? [8, 6] : []);
-    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr * H * 2, rr * H * 2 * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr, rr * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   if (t.fast > n && !t.dead) { ctx.fillStyle = 'rgba(255,120,40,.22)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .55 * cam.s, .3 * cam.s, 0, 0, 7); ctx.fill(); }
   var sh = u.air ? .14 : .32; ctx.fillStyle = u.air ? 'rgba(30,60,30,.18)' : 'rgba(30,60,30,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, sh * cam.s * Math.min(u.h, 1.6), sh * .5 * cam.s * Math.min(u.h, 1.6), 0, 0, 7); ctx.fill();
   ctx.translate(p.x + ox, p.y + oy); ctx.scale(sx, sy);
