@@ -24,6 +24,12 @@ function rate(b) { var d = B[b.k]; return d.rate * Math.pow(1.4, b.lv - 1); }   
 function armySpace() { var s = 0; D.buildings.forEach(function (b) { if (B[b.k].kind === 'camp' && b.lv > 0) s += Math.round(B.camp.space * (1 + .25 * (b.lv - 1))); }); return s; }
 function armyUsed(withQueue) { var s = 0; Object.keys(D.army).forEach(function (k) { s += (D.army[k] || 0) * U[k].space; }); if (withQueue) D.queue.forEach(function (q) { s += U[q.k].space; }); return s; }
 function barracksLv() { var m = 0; D.buildings.forEach(function (b) { if (b.k === 'barracks') m = Math.max(m, b.lv); }); return m; }
+// heroes: unlocked by the leaders' hall + duck-house level; one that falls in a raid rests a while before the next one
+function hallLv() { var m = 0; D.buildings.forEach(function (b) { if (b.k === 'herohall') m = Math.max(m, b.lv); }); return m; }
+function heroOpen(k) { return hallLv() > 0 && hqLv() >= U[k].hq; }
+function heroRest(k) { var r = (D.heroRest || {})[k] || 0; return Math.max(0, r - now()); }
+function heroRestMs(lv) { return TEST ? 30000 : (4 + lv) * 60000; }
+function heroWake(k) { var ms = heroRest(k); if (!ms) return true; if (!pay('coin', coinsFor(ms))) return false; D.heroRest[k] = 0; writeSave(); return true; }
 function busyBuilders() { return D.buildings.filter(function (b) { return b.up; }).length; }
 function count(k) { return D.buildings.filter(function (b) { return b.k === k; }).length; }
 

@@ -56,6 +56,10 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 #confirm .btn{padding:6px 14px}
 #raid-top{position:fixed;top:calc(8px + var(--safe-t));left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.9);border-radius:18px;padding:4px 16px;border:2px solid #fff;font-size:15px}
 .stars{color:#ffbf1f;font-size:24px;letter-spacing:2px;text-shadow:0 2px 0 #b97a00}.stars em,.result-stars em{color:#d9d2c2;font-style:normal;text-shadow:none}
+#troops .tcard.hero{border-color:#ffcc2e;background:linear-gradient(#fff6d0,#ffe08a)}#troops .tcard.hero.skill{animation:skillpulse .8s ease-in-out infinite alternate;border-color:#ff7a1a}
+#troops .tcard.hero.on{border-color:#ff9a00;box-shadow:0 4px 0 #d08a00,0 0 0 3px #ffd34a}#troops .tcard .crown{position:absolute;top:-6px;left:-4px;font-size:16px}@keyframes skillpulse{from{transform:scale(1)}to{transform:scale(1.08);box-shadow:0 0 12px #ff9a2a}}
+.p-heroes{display:flex;gap:6px;margin:4px 0}.p-heroes .hcell{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;background:rgba(255,240,200,.6);border-radius:10px;padding:4px;font-size:11px;gap:2px}
+.p-heroes .hcell.off{opacity:.5}.p-heroes .portrait{width:44px;height:44px;background-size:cover;background-position:center;display:block}.p-heroes .sk{color:#8a4b00}.p-heroes .btn{font-size:11px;padding:3px 6px}
 #troops{position:fixed;bottom:calc(8px + var(--safe-b));left:calc(10px + var(--safe-l));right:140px;display:flex;gap:8px;overflow-x:auto}
 .tcard{position:relative;flex:0 0 auto;width:84px;background:#fff;border:3px solid #fff;border-radius:16px;padding:4px;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 0 #c9b38a}
 .tcard.on{border-color:#ffc531;box-shadow:0 4px 0 #d08a00,0 0 0 3px #ffe38a}.tcard.off{opacity:.45}

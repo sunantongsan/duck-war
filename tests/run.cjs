@@ -37,6 +37,22 @@ g('(function(){for(var k of ["fork","sling","giant"]){R.sel=k;for(var i=0;i<40;i
 for(let i=0;i<120*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
 const p4=g('destruction()');ok(p4>=0.9,'crowded raid on level 4 reaches '+Math.round(p4*100)+'% (needs 90%)');
 ok(g('!R.troops.some(t=>!t.dead&&t.attacking&&t.target&&!t.target.dead&&t.target.k&&rectDist(t.x,t.y,t.target)>(U[t.k].range+0.6))'),'no troop hits a building from out of range');
+// heroes: colonel leads, the dog king and egret queen fight; each has one skill; a fallen hero rests
+g('D.buildings.find(b=>b.k==="hq").lv=8;D.buildings.push({id:999,k:"herohall",x:2,y:2,lv:5});D.heroRest={};D.army={fork:20,giant:4};startRaid(3);');
+ok(g('!!R.heroes.h_colonel&&!!R.heroes.h_king&&!!R.heroes.h_queen'),'all three heroes ready at duck house 8');
+ok(g('(function(){var n=0;for(var k of HERO_KEYS){R.pick=k;for(var i=0;i<20&&R.heroes[k].state==="ready";i++)deploy(0.5,4+i*.5);if(R.heroes[k].state==="out")n++;}return n;})()')===3,'heroes deploy once each');
+ok(g('R.troops.filter(t=>t.side==="duck"&&U[t.kind].hero).length===3&&(R.pick="h_king",!deploy(0.5,12))'),'a hero cannot be deployed twice');
+g('R.pick="fork";for(var i=0;i<10;i++)deploy(0.5,8+i*.3)');
+for(let i=0;i<40;i++)g('raidTick(0.05)');
+ok(g('heroSkill("h_colonel")&&!heroSkill("h_colonel")'),'colonel skill works once');
+ok(g('heroSkill("h_king")&&R.troops.filter(t=>t.kind==="fork"&&t.owner).length>=3'),'king skill calls fork ducks');
+ok(g('heroSkill("h_queen")&&R.heroes.h_queen.unit.invis>now()'),'queen skill hides her');
+for(let i=0;i<150*20&&g('!!R&&!R.over');i++)g('raidTick(0.05)');
+ok(g('destruction()')>0.3,'hero raid destroyed '+Math.round(g('destruction()')*100)+'%');
+g('var hk=R.heroes.h_king.unit;if(!hk.dead){hk.hp=1;damage(hk,10,null);}');
+ok(g('heroRest("h_king")>0'),'fallen hero rests');
+g('startRaid(3)');ok(g('!R.heroes.h_king&&!!R.heroes.h_queen'),'resting hero left out of the next raid');
+ok(g('heroWake("h_king")&&heroRest("h_king")===0'),'duck coins wake a resting hero');
 ok(g('(selectBuilding(null),true)'),'deselect building');
 // landing zone: only outside the wall ring
 for (const lv of [2,6,12]) { g('D.army={fork:5};startRaid('+lv+');');

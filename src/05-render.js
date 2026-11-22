@@ -146,21 +146,53 @@ function drawTroop(t) {
   } else if (t.moving) { var b = Math.sin((t.walk || 0) * 9 * Math.PI / 4); sy = 1 + .06 * b; sx = 1 - .05 * b; }
   else if (!t.dead) { var br = Math.sin(n / 260 + t.x); sy = 1 + .025 * br; sx = 1 - .02 * br; }
   if (t.born && n - t.born < 400) { var bq = (n - t.born) / 400, bw = Math.exp(-5 * bq) * Math.sin(bq * 18); sx *= 1 + bw * .3; sy *= 1 - bw * .3; }
+  if (t.invis > n) alpha *= .35 + Math.sin(n / 90) * .08;   // the queen's feather veil
   ctx.save(); ctx.globalAlpha = alpha;
+  if (u.hero && !t.dead) { // a gold ring on the ground marks a hero; the colonel's shows how far his leadership reaches
+    var rr = (u.aura || .75) * cam.s; ctx.strokeStyle = 'rgba(255,205,60,' + (u.aura ? .45 : .7) + ')'; ctx.lineWidth = 2.5; ctx.setLineDash(u.aura ? [8, 6] : []);
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr * H * 2, rr * H * 2 * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  if (t.fast > n && !t.dead) { ctx.fillStyle = 'rgba(255,120,40,.22)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .55 * cam.s, .3 * cam.s, 0, 0, 7); ctx.fill(); }
   var sh = u.air ? .14 : .32; ctx.fillStyle = u.air ? 'rgba(30,60,30,.18)' : 'rgba(30,60,30,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, sh * cam.s * Math.min(u.h, 1.6), sh * .5 * cam.s * Math.min(u.h, 1.6), 0, 0, 7); ctx.fill();
   ctx.translate(p.x + ox, p.y + oy); ctx.scale(sx, sy);
   var cw = a.cw || L.cw, ch = a.ch || L.ch; ctx.drawImage(im, col * cw, dir * ch, cw, ch, -a.ax * k, -a.ay * k, cw * k, ch * k);
+  if (u.crown && !t.dead) { var ht = headTop(im, col, dir, cw, ch); if (ht) drawCrown((ht.x - a.ax) * k, (ht.y - a.ay) * k + cam.s * .1, cam.s * .5, u.crown); }
   ctx.restore();
   if (!t.dead && t.hp < t.max) hpBar(t.x, t.y, u.h * 1.45, t.hp / t.max, t.side === 'cat' ? '#ff6b5a' : '#7be36a');
 }
 
+var HEADS = {};
+function headTop(im, col, dir, cw, ch) { // top of the head in one animation frame (first opaque row), worked out once and kept
+  var key = im.src + '|' + col + '|' + dir; if (key in HEADS) return HEADS[key];
+  var r = null; try {
+    var c = headTop.c || (headTop.c = document.createElement('canvas')); c.width = cw; c.height = ch; var g = c.getContext('2d', { willReadFrequently: true });
+    g.clearRect(0, 0, cw, ch); g.drawImage(im, col * cw, dir * ch, cw, ch, 0, 0, cw, ch); var d = g.getImageData(0, 0, cw, ch).data;
+    // the king and queen wear the army helmet: its olive green marks the head (the dog's tail sticks up higher than his head)
+    function scan(test) { for (var y = 0; y < ch; y++) { var sx = 0, n = 0; for (var x = 0; x < cw; x++) { var i = (y * cw + x) * 4; if (test(d[i], d[i + 1], d[i + 2], d[i + 3])) { sx += x; n++; } } if (n >= 4) return { x: sx / n, y: y }; } return null; }
+    r = scan(function (R0, G, B0, A) { return A > 200 && G > R0 + 8 && G > B0 + 18 && G < 170 && R0 < 150; }) || scan(function (R0, G, B0, A) { return A > 140; });
+  } catch (e) { r = null; }
+  return HEADS[key] = r;
+}
+function drawCrown(x, y, s, kind) { // gold crown that sits on the king's and queen's heads, bobbing with them
+  ctx.save(); ctx.translate(x, y + Math.sin(now() / 220) * s * .05);
+  var w = s, hgt = s * (kind === 'queen' ? .8 : .62);
+  ctx.fillStyle = '#ffcc2e'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = Math.max(1.2, s * .07);
+  ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2, -hgt);
+  var pts = kind === 'queen' ? 5 : 3;
+  for (var i = 0; i < pts; i++) { var x0 = -w / 2 + w * i / pts, x1 = x0 + w / pts; ctx.lineTo(x0 + w / pts / 2, -hgt * (kind === 'queen' ? .55 : .45)); ctx.lineTo(x1, -hgt); }
+  ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = kind === 'queen' ? '#5ad1ff' : '#e8322a'; ctx.beginPath(); ctx.arc(0, -hgt * .3, s * .1, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(-w / 2 + s * .08, -s * .14, w - s * .16, s * .06);
+  ctx.restore();
+}
 // ---------- shots and effects ----------
-var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5] };
+var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4] };
 function drawShot(s) {
   var p = toScreen(s.x, s.y, s.z), g = toScreen(s.x, s.y), st = SHOT[s.kind] || SHOT.pebble, r = st[1] * cam.s / 40;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y, r, r * .5, 0, 0, 7); ctx.fill();
   ctx.fillStyle = st[0]; ctx.strokeStyle = 'rgba(60,40,20,.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill(); ctx.stroke();
   if (s.kind === 'cracker') { ctx.fillStyle = '#ffd23f'; ctx.fillRect(p.x - r * .5, p.y - r * 1.6, r, r * .6); ctx.fillStyle = 'rgba(255,220,120,' + (.5 + Math.random() * .5) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y - r * 2, r * .5, 0, 7); ctx.fill(); }   // lit fuse
+  if (s.kind === 'feather') { var ang = Math.atan2((s.ty - s.fy) * ISO, s.tx - s.fx); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 2.4, r * .7, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * 2.4, 0); ctx.lineTo(r * 2.4, 0); ctx.stroke(); ctx.restore(); }
   if (s.kind === 'water') { ctx.fillStyle = 'rgba(160,230,255,.5)'; ctx.beginPath(); ctx.arc(p.x - r * .3, p.y - r * .3, r * .45, 0, 7); ctx.fill(); }
 }
 function drawFx(f, dt) {

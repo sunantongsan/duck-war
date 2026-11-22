@@ -63,6 +63,13 @@ function selectBuilding(b, keepGroup) {
     bc.onclick = function () { if (fillWithCoins(r)) { selectBuilding(b); hud(); } }; row2.appendChild(bc);
     p.appendChild(row2);
   }
+  if (d.kind === 'hero') { var hl = h('div', 'p-heroes');
+    HERO_KEYS.forEach(function (k) { var u = U[k], open = b.lv > 0 && hqLv() >= u.hq, rest = heroRest(k), cell = h('div', 'hcell' + (open ? '' : ' off'));
+      cell.innerHTML = '<span class="portrait" style="' + heroThumb(k) + '"></span><b>' + (u.crown ? '👑 ' : '🎖 ') + u.name + '</b><small>' +
+        (!open ? 'ปลดล็อกบ้านเป็ดเลเวล ' + u.hq : rest ? '💫 พักฟื้น ' + clock(rest) : 'Lv' + b.lv + ' · ♥' + fmt(uHp(k, b.lv)) + ' · ⚔' + fmt(uDmg(k, b.lv))) + '</small><small class="sk">⚡ ' + u.skill + ': ' + u.skillTxt + '</small>';
+      if (open && rest) { var wk = h('button', 'btn gold', 'ปลุกทันที ' + costTag('coin', coinsFor(rest))); wk.onclick = function () { if (heroWake(k)) { selectBuilding(b, true); hud(); } }; cell.appendChild(wk); }
+      hl.appendChild(cell); });
+    p.appendChild(hl); }
   if (d.kind === 'train' || d.kind === 'camp') { var a = h('button', 'btn', '🪖 กองทัพ'); a.onclick = armyMenu; row.appendChild(a); }
   p.appendChild(row); p.appendChild(h('div', 'note drag-hint', '✋ แตะค้างแล้วลากเพื่อย้าย' + (group && group.length > 1 ? 'ทั้งแถว' : ''))); p.classList.add('open');
   if (fresh) keepClearOfPanel(b);
@@ -128,7 +135,7 @@ function armyMenu() {
 
 // ---------- attack ----------
 function attackMenu() {
-  if (!armyUsed()) { toast('ยังไม่มีทหาร ไปฝึกที่ลานฝึกเป็ดก่อน'); armyMenu(); return; }
+  if (!armyUsed() && !HERO_KEYS.some(function (k) { return heroOpen(k) && !heroRest(k); })) { toast('ยังไม่มีทหาร ไปฝึกที่ลานฝึกเป็ดก่อน'); armyMenu(); return; }
   openSheet('บุกฐานแมว', function (body) {
     body.appendChild(h('p', 'note', 'เลือกด่าน ด่านต่อไปเปิดเมื่อได้อย่างน้อย 1 ดาว'));
     var grid = h('div', 'levels');
@@ -140,8 +147,18 @@ function attackMenu() {
   });
 }
 function enterRaid(n) { startRaid(n); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
+function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
+  var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
+  var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
+}
 function raidBar() {
   var bar = $('troops'); bar.innerHTML = '';
+  HERO_KEYS.forEach(function (k) {
+    var hs = R.heroes[k]; if (!hs) return; var u = U[k], dead = hs.unit && hs.unit.dead, st = hs.state === 'ready' ? (R.pick === k ? ' on' : '') : dead || hs.used ? ' off' : ' skill';
+    var lab = hs.state === 'ready' ? 'Lv' + hs.lv : dead ? '💫' : hs.used ? '✓' : '⚡สกิล';
+    var c = h('button', 'tcard hero' + st, '<span class="cnt">' + lab + '</span><span class="portrait" style="' + heroThumb(k) + '"></span>' + (u.crown ? '<span class="crown">👑</span>' : '<span class="crown">🎖</span>') + '<small>' + u.name + '</small>');
+    c.onclick = function () { if (hs.state === 'ready') { R.pick = k; raidBar(); } else if (heroSkill(k)) raidBar(); }; bar.appendChild(c);
+  });
   Object.keys(R.army).forEach(function (k) {
     if (!(R.army[k] > 0) && R.pick !== k) return;
     var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + U[k].art + '.webp)"></span><small>' + U[k].name + '</small>');

@@ -222,6 +222,7 @@ var B = {
   camp:          { name: 'ค่ายพักเป็ด',        size: 3, art: 'camp',          hp: 400, res: 'veggie', cost: 200, time: 8, kind: 'camp', space: 20, max: [1, 2, 2, 3, 3, 4, 4, 4] },
   barracks:      { name: 'ลานฝึกเป็ด',         size: 2, art: 'barracks',      hp: 450, res: 'veggie', cost: 150, time: 6, kind: 'train', max: [1, 2, 2, 3, 3, 4, 4, 4] },
   lab:           { name: 'ห้องทดลองเป็ด',      size: 2, art: 'lab',           hp: 500, res: 'veggie', cost: 5000, time: 30, kind: 'lab', unlock: 3, max: [0, 0, 1, 1, 1, 1, 1, 1] },
+  herohall:      { name: 'ศาลาผู้นำเป็ด',      size: 2, art: 'hero',          hp: 900, res: 'honey', cost: 8000, time: 40, kind: 'hero', unlock: 3, max: [0, 0, 1, 1, 1, 1, 1, 1] },
   workshop:      { name: 'โรงนาช่างเป็ด',      size: 2, art: 'workshop',      hp: 500, res: 'honey', cost: 4000, time: 30, kind: 'deco', unlock: 4, max: [0, 0, 0, 1, 1, 1, 1, 1] },
   slingshot:     { name: 'หนังสติ๊กยักษ์',      size: 2, turret: 'slingshot',  hp: 520, res: 'honey', cost: 250, time: 8, kind: 'defense', range: 6.5, dmg: 18, rate: 0.9, shot: 'rock', ground: true, max: [2, 2, 3, 3, 4, 4, 5, 5] },
   boxtower:      { name: 'หอกล่องเป็ดยิงไกล',   size: 2, turret: 'boxtower',   hp: 480, res: 'honey', cost: 1000, time: 15, kind: 'defense', range: 8, dmg: 11, rate: 0.75, shot: 'pebble', ground: true, air: true, unlock: 2, max: [0, 1, 2, 2, 3, 3, 4, 4] },
@@ -258,13 +259,21 @@ var U = {   // Clash counterpart in the comment; unlock = training-yard level
   witch:   { name: 'เป็ดแม่มด',             art: 'witch',   h: 1.05, space: 12, cost: 150,  res: 'syrup',  time: 90,  hp: 160,  dmg: 25,  rate: 1.4, range: 3.5, speed: 1.3,  pref: 'any',      hit: 'magic', summon: 'duckling', unlock: 9 },   // witch: raises ducklings
   fan:     { name: 'เป็ดพัดลม',             art: 'fan',     h: 1.7,  space: 30, cost: 250,  res: 'syrup',  time: 120, hp: 2400, dmg: 6,   rate: 1,   range: 1,   speed: 1.0,  pref: 'airdef',   hit: 'shot', air: true, split: 'fanlet', unlock: 9 },   // lava hound: hunts anti-air, bursts into small fans
   dog:     { name: 'หมาดัลเมเชียน',          art: 'dog',     h: 1.45, space: 10, cost: 300,  res: 'syrup',  time: 90,  hp: 1100, dmg: 70,  rate: 1.2, range: 0.7, speed: 1.1,  pref: 'any',      hit: 'bite', unlock: 9 },                       // yeti
+  // heroes: never trained; they come from the leaders' hall (ศาลาผู้นำเป็ด), one each per raid, and level with the hall
+  h_colonel: { name: 'ผู้พันเป็ด',          art: 'colonel', h: 3.0,  space: 0, hp: 950,  dmg: 38,  rate: 1.2, range: 0.7, speed: 1.55, pref: 'defense', hit: 'smash', hero: true, hidden: true, hq: 3, aura: 3.5,
+               skill: 'เป่านกหวีดบุก!', skillTxt: 'ทหารรอบตัวเร็วขึ้น ตีแรงขึ้น และฟื้นเลือด' },                          // grand warden: walks at the front, ducks near him hit harder
+  h_king:    { name: 'ราชาดัลเมเชียน',      art: 'dog',     h: 2.2,  space: 0, hp: 1900, dmg: 95,  rate: 1.2, range: 0.8, speed: 1.25, pref: 'any',     hit: 'bite',  hero: true, hidden: true, hq: 5, crown: 'king',
+               skill: 'หอนเรียกพล', skillTxt: 'ฟื้นเลือด คลั่ง และเรียกเป็ดส้อมมาช่วย' },                                    // barbarian king
+  h_queen:   { name: 'ราชินีนกกระยาง',      art: 'egret',   h: 2.3,  space: 0, hp: 850,  dmg: 62,  rate: 0.9, range: 3.8, speed: 1.4,  pref: 'any',     hit: 'shot', shot: 'feather', hero: true, hidden: true, hq: 7, crown: 'queen',
+               skill: 'ม่านขนนก', skillTxt: 'หายตัว ป้อมยิงไม่เห็น และยิงแรงขึ้นสองเท่า' },                                // archer queen: darts feathers from range
   // not trainable: made by other troops
   duckling: { name: 'ลูกเป็ด', art: 'fork', h: 0.55, space: 0, hp: 22, dmg: 6, rate: 1, range: 0.5, speed: 2.0, pref: 'any', hit: 'stab', hidden: true },
   fanlet:   { name: 'พัดลมจิ๋ว', art: 'fan',  h: 0.75, space: 0, hp: 45, dmg: 9, rate: 1, range: 2, speed: 2.0, pref: 'any', hit: 'shot', air: true, hidden: true }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });
-function uHp(k, lv) { return grow(U[k].hp, lv || 1, 1.18); }
-function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, 1.18); }
+function uHp(k, lv) { return grow(U[k].hp, lv || 1, U[k].hero ? 1.1 : 1.18); }
+function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, U[k].hero ? 1.1 : 1.18); }
+var HERO_KEYS = ['h_colonel', 'h_king', 'h_queen'];
 var HEROES = { colonel: { name: 'ผู้พันเป็ด', art: 'colonel', h: 3.0, speed: 0.8 } };   // hero-sized, like a Clash king
 var CATS = { cat_spatula: { art: 'cat_spatula', h: 1, hp: 120, dmg: 12, rate: 1, range: 0.6, speed: 1.5, hit: 'smash' },
              cat_pan: { art: 'cat_pan', h: 1.15, hp: 260, dmg: 16, rate: 1.3, range: 0.6, speed: 1.1, hit: 'smash' },
@@ -298,6 +307,12 @@ function rate(b) { var d = B[b.k]; return d.rate * Math.pow(1.4, b.lv - 1); }   
 function armySpace() { var s = 0; D.buildings.forEach(function (b) { if (B[b.k].kind === 'camp' && b.lv > 0) s += Math.round(B.camp.space * (1 + .25 * (b.lv - 1))); }); return s; }
 function armyUsed(withQueue) { var s = 0; Object.keys(D.army).forEach(function (k) { s += (D.army[k] || 0) * U[k].space; }); if (withQueue) D.queue.forEach(function (q) { s += U[q.k].space; }); return s; }
 function barracksLv() { var m = 0; D.buildings.forEach(function (b) { if (b.k === 'barracks') m = Math.max(m, b.lv); }); return m; }
+// heroes: unlocked by the leaders' hall + duck-house level; one that falls in a raid rests a while before the next one
+function hallLv() { var m = 0; D.buildings.forEach(function (b) { if (b.k === 'herohall') m = Math.max(m, b.lv); }); return m; }
+function heroOpen(k) { return hallLv() > 0 && hqLv() >= U[k].hq; }
+function heroRest(k) { var r = (D.heroRest || {})[k] || 0; return Math.max(0, r - now()); }
+function heroRestMs(lv) { return TEST ? 30000 : (4 + lv) * 60000; }
+function heroWake(k) { var ms = heroRest(k); if (!ms) return true; if (!pay('coin', coinsFor(ms))) return false; D.heroRest[k] = 0; writeSave(); return true; }
 function busyBuilders() { return D.buildings.filter(function (b) { return b.up; }).length; }
 function count(k) { return D.buildings.filter(function (b) { return b.k === k; }).length; }
 
@@ -453,8 +468,10 @@ function startRaid(n) {
   R.lootTotal = base.loot;
   var hq = R.buildings.find(function (b) { return b.k === 'hq'; });
   base.cats.forEach(function (k, i) { var c = CATS[k], sp = freeSpot(hq.x + 1.5, hq.y + 1.5, 2.2 + i * .6, i); R.troops.push({ side: 'cat', kind: k, x: sp.x, y: sp.y, hp: c.hp, max: c.hp, cool: 0, home: { x: hq.x + 1.5, y: hq.y + 1.5 }, dir: 2 }); });
-  R.pick = Object.keys(R.army).find(function (k) { return R.army[k] > 0; }) || null;
+  R.heroes = {}; HERO_KEYS.forEach(function (k) { if (heroOpen(k) && !heroRest(k)) R.heroes[k] = { state: 'ready', lv: hallLv() }; });
+  R.pick = nextPick();
 }
+function nextPick() { return Object.keys(R.army).find(function (q) { return R.army[q] > 0; }) || HERO_KEYS.find(function (q) { return R.heroes[q] && R.heroes[q].state === 'ready'; }) || null; }
 
 function inBuilding(x, y) { return R.buildings.some(function (b) { if (b.dead || b.k === 'wall') return false; var s = B[b.k].size; return x > b.x - .15 && y > b.y - .15 && x < b.x + s + .15 && y < b.y + s + .15; }); }
 function freeSpot(cx, cy, r, seed) { // open ground near (cx, cy), so a guard is never hidden inside a building
@@ -482,13 +499,31 @@ function canDeploy(x, y) {
   return !R.buildings.some(function (b) { return !b.dead && b.k !== 'wall' && rectDist(x, y, b) < 1; });
 }
 function deploy(x, y) {
-  var k = R.pick; if (!k || !(R.army[k] > 0) || R.over) return false;
+  var k = R.pick; if (!k || R.over) return false;
+  var hero = R.heroes[k]; if (hero ? hero.state !== 'ready' : !(R.army[k] > 0)) return false;
   if (!canDeploy(x, y)) { R.redFlash = now(); sfx('error'); toast('ปล่อยทหารได้แค่นอกกำแพง และห่างอาคาร 1 ช่อง'); return false; }
-  var u = U[k]; R.army[k]--; R.deployed++; R.started = true;
-  R.troops.push({ side: 'duck', kind: k, x: x, y: y, hp: uHp(k), max: uHp(k), cool: 0.2, dir: 2, born: now() });
+  var lv = hero ? hero.lv : 1, t = { side: 'duck', kind: k, x: x, y: y, hp: uHp(k, lv), max: uHp(k, lv), lv: lv, cool: 0.2, dir: 2, born: now() };
+  if (hero) { hero.state = 'out'; hero.unit = t; } else R.army[k]--;
+  R.deployed++; R.started = true; R.troops.push(t);
   R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5 });
-  if (!(R.army[k] > 0)) R.pick = Object.keys(R.army).find(function (q) { return R.army[q] > 0; }) || null;
+  if (hero) { sfx(k === 'h_colonel' ? 'colonel' : k === 'h_king' ? 'bite' : 'heal'); buzz('medium'); toast((k === 'h_colonel' ? '🎖 ' : '👑 ') + U[k].name + ' ลงสนาม! แตะการ์ดอีกครั้งเพื่อใช้สกิล'); R.pick = nextPick(); return true; }
+  if (!(R.army[k] > 0)) R.pick = nextPick();
   sfx('deploy'); buzz('light'); return true;
+}
+// a hero's one skill per raid
+function heroSkill(k) {
+  var h = R.heroes[k]; if (!h || h.state !== 'out' || h.used || R.over) return false;
+  var t = h.unit; if (!t || t.dead) return false; h.used = true; t.atk = now(); var until = now() + 6000;
+  if (k === 'h_colonel') { // whistle: every duck near him charges — faster, harder hits, a bit of health back
+    alive(R.troops).forEach(function (o) { if (o.side === 'duck' && Math.hypot(o.x - t.x, o.y - t.y) < 6) { o.fast = until; o.hp = Math.min(o.max, o.hp + o.max * .2); R.fx.push({ t: 'heal', x: o.x, y: o.y, life: .6, max: .6 }); } });
+    sfx('colonel'); sfx('horn'); toast('🎖 ผู้พันเป็ด: บุกกก! ทุกหน่วยตามข้ามา!');
+  } else if (k === 'h_king') { // howl: heals, rages and calls fork ducks to his side
+    t.hp = Math.min(t.max, t.hp + t.max * .35); t.fast = until; spawnAround(t, 'fork', 3 + Math.floor(h.lv / 3), 1.1);
+    sfx('bite'); toast('👑 ราชาดัลเมเชียน: โฮ่งงง! ทหารเป็ดมาช่วยกัน!');
+  } else { // feather veil: unseen by turrets and cats, double damage
+    t.invis = now() + 4500; t.fast = until; t.hp = Math.min(t.max, t.hp + t.max * .15); sfx('heal'); toast('👑 ราชินีนกกระยาง: ม่านขนนก!');
+  }
+  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .5, max: .5, size: .8 }); buzz('heavy'); return true;
 }
 
 // ---------- path finding: Dijkstra on tiles; buildings block, walls are passable but cost a lot (troops break them) ----------
@@ -543,7 +578,8 @@ function damage(target, amount, from) {
     target.hp = 0; target.dead = true; target.deadAt = now();
     if (target.k) { sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
-    else { if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
+    else { if (target.side === 'duck' && U[target.kind].hero) { D.heroRest = D.heroRest || {}; D.heroRest[target.kind] = now() + heroRestMs(target.lv || 1); toast('💫 ' + U[target.kind].name + ' หมดแรง ต้องพักฟื้นก่อนบุกครั้งหน้า'); if (typeof raidBar === 'function') raidBar(); }
+      if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
       sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
   }
 }
@@ -634,12 +670,18 @@ function spawnAround(t, kind, n, r) { // witch's ducklings, the fan's little fan
 }
 function step(t, x, y, speed, dt) {
   var dx = x - t.x, dy = y - t.y, d = Math.hypot(dx, dy); if (d < 1e-3) return;
+  if (t.fast > now()) speed *= 1.4;
   var m = Math.min(d, speed * dt); t.x += dx / d * m; t.y += dy / d * m; t.moving = true; t.face = Math.atan2(dy, dx); t.walk = (t.walk || 0) + m;
 }
 function attack(t, target, u) {
   if (t.cool > 0) return; t.cool = u.rate; t.atk = now();
-  var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind);
+  var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind, t.lv);
   if (t.rage) dmg *= 1.5;
+  if (t.side === 'duck') {
+    if (t.fast > now()) dmg *= t.invis > now() ? 2 : 1.4;
+    if (!u.hero && R.heroes.h_colonel && R.heroes.h_colonel.unit) { var col = R.heroes.h_colonel.unit; if (!col.dead && Math.hypot(col.x - t.x, col.y - t.y) < U.h_colonel.aura) dmg *= 1.25; }   // the colonel leads: ducks by his side fight harder
+  }
+  if (u.shot === 'feather') { sfx('shot'); shoot(t, target, 'feather', dmg, 0, 11, t.x, t.y, 1.4); return; }
   if (u.hit === 'blast') { blast(t, u, dmg); return; }
   if (u.hit === 'magic') { sfx('heal'); shoot(t, target, 'magic', dmg, 0, 8, t.x, t.y, .9); return; }
   if (u.hit === 'cracker') { sfx('shot'); shoot(t, target, 'cracker', dmg, u.splash, 5, t.x, t.y, 1.9); return; }
@@ -648,7 +690,7 @@ function attack(t, target, u) {
 }
 function catTick(t, dt) {
   var c = CATS[t.kind], foe = null, fd = 4.5;
-  alive(R.troops).forEach(function (o) { if (o.side === 'duck' && !o.under && !U[o.kind].air) { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
+  alive(R.troops).forEach(function (o) { if (o.side === 'duck' && !o.under && !U[o.kind].air && !(o.invis > now())) { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
   if (foe) { t.face = Math.atan2(foe.y - t.y, foe.x - t.x); if (fd > c.range + .45) return step(t, foe.x, foe.y, c.speed, dt); return attack(t, foe, c); }
   if (!t.stroll || Math.hypot(t.stroll.x - t.x, t.stroll.y - t.y) < .1) { t.stroll = null;
     for (var i = 0; i < 12 && !t.stroll; i++) { var g = { x: t.home.x + (Math.random() - .5) * 7, y: t.home.y + (Math.random() - .5) * 7 }; if (!inBuilding(g.x, g.y)) t.stroll = g; }
@@ -659,7 +701,7 @@ function catTick(t, dt) {
 function turretTick(b, dt) {
   var d = B[b.k]; if (d.kind !== 'defense' || b.dead) return; b.cool -= dt;
   var c = center(b), lv = b.lv, range = d.range, target = null, best = 1e9;
-  alive(R.troops).forEach(function (o) { if (o.side !== 'duck' || o.under) return; var air = !!U[o.kind].air; if (air ? !d.air : !d.ground) return;
+  alive(R.troops).forEach(function (o) { if (o.side !== 'duck' || o.under || o.invis > now()) return; var air = !!U[o.kind].air; if (air ? !d.air : !d.ground) return;
     var dd = Math.hypot(o.x - c.x, o.y - c.y); if (dd <= range && dd >= (d.minRange || 0) && dd < best) { best = dd; target = o; } });
   if (!target) return;
   var want = Math.atan2(target.y - c.y, target.x - c.x), diff = Math.atan2(Math.sin(want - b.aim), Math.cos(want - b.aim));
@@ -680,6 +722,7 @@ function shotTick(s, dt) {
   else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }
+function big(o) { var u = U[o.kind] || CATS[o.kind] || {}; return u.hero ? .5 : u.space >= 5 ? .35 : .2; }
 function destruction() {
   var all = R.buildings.filter(function (b) { return b.k !== 'wall'; }), dead = all.filter(function (b) { return b.dead; }).length;
   return all.length ? dead / all.length : 0;
@@ -691,10 +734,10 @@ function raidTick(dt) {
   R.buildings.forEach(function (b) { turretTick(b, dt); });
   R.shots = R.shots.filter(function (s) { return !shotTick(s, dt); });
   // soft separation so ducks don't stack on one spot
-  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r0 = ((U[a.kind] || CATS[a.kind] || {}).space >= 5 ? .35 : .2) + ((U[b.kind] || CATS[b.kind] || {}).space >= 5 ? .35 : .2); if (d > 0 && d < r0) { var p = (r0 - d) / 4 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
+  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r0 = big(a) + big(b); if (d > 0 && d < r0) { var p = (r0 - d) / 4 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
   var pct = destruction(), hqDead = R.buildings.some(function (b) { return b.k === 'hq' && b.dead; });
   R.stars = (pct >= .5 ? 1 : 0) + (hqDead ? 1 : 0) + (pct >= 1 ? 1 : 0); R.pct = pct;
-  var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; });
+  var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; }) || HERO_KEYS.some(function (k) { return R.heroes[k] && R.heroes[k].state === 'ready'; });
   if (pct >= 1 || R.time <= 0 || (R.started && !ducksLeft)) endRaid();
 }
 function endRaid() {
@@ -858,21 +901,53 @@ function drawTroop(t) {
   } else if (t.moving) { var b = Math.sin((t.walk || 0) * 9 * Math.PI / 4); sy = 1 + .06 * b; sx = 1 - .05 * b; }
   else if (!t.dead) { var br = Math.sin(n / 260 + t.x); sy = 1 + .025 * br; sx = 1 - .02 * br; }
   if (t.born && n - t.born < 400) { var bq = (n - t.born) / 400, bw = Math.exp(-5 * bq) * Math.sin(bq * 18); sx *= 1 + bw * .3; sy *= 1 - bw * .3; }
+  if (t.invis > n) alpha *= .35 + Math.sin(n / 90) * .08;   // the queen's feather veil
   ctx.save(); ctx.globalAlpha = alpha;
+  if (u.hero && !t.dead) { // a gold ring on the ground marks a hero; the colonel's shows how far his leadership reaches
+    var rr = (u.aura || .75) * cam.s; ctx.strokeStyle = 'rgba(255,205,60,' + (u.aura ? .45 : .7) + ')'; ctx.lineWidth = 2.5; ctx.setLineDash(u.aura ? [8, 6] : []);
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, rr * H * 2, rr * H * 2 * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  if (t.fast > n && !t.dead) { ctx.fillStyle = 'rgba(255,120,40,.22)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .55 * cam.s, .3 * cam.s, 0, 0, 7); ctx.fill(); }
   var sh = u.air ? .14 : .32; ctx.fillStyle = u.air ? 'rgba(30,60,30,.18)' : 'rgba(30,60,30,.28)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, sh * cam.s * Math.min(u.h, 1.6), sh * .5 * cam.s * Math.min(u.h, 1.6), 0, 0, 7); ctx.fill();
   ctx.translate(p.x + ox, p.y + oy); ctx.scale(sx, sy);
   var cw = a.cw || L.cw, ch = a.ch || L.ch; ctx.drawImage(im, col * cw, dir * ch, cw, ch, -a.ax * k, -a.ay * k, cw * k, ch * k);
+  if (u.crown && !t.dead) { var ht = headTop(im, col, dir, cw, ch); if (ht) drawCrown((ht.x - a.ax) * k, (ht.y - a.ay) * k + cam.s * .1, cam.s * .5, u.crown); }
   ctx.restore();
   if (!t.dead && t.hp < t.max) hpBar(t.x, t.y, u.h * 1.45, t.hp / t.max, t.side === 'cat' ? '#ff6b5a' : '#7be36a');
 }
 
+var HEADS = {};
+function headTop(im, col, dir, cw, ch) { // top of the head in one animation frame (first opaque row), worked out once and kept
+  var key = im.src + '|' + col + '|' + dir; if (key in HEADS) return HEADS[key];
+  var r = null; try {
+    var c = headTop.c || (headTop.c = document.createElement('canvas')); c.width = cw; c.height = ch; var g = c.getContext('2d', { willReadFrequently: true });
+    g.clearRect(0, 0, cw, ch); g.drawImage(im, col * cw, dir * ch, cw, ch, 0, 0, cw, ch); var d = g.getImageData(0, 0, cw, ch).data;
+    // the king and queen wear the army helmet: its olive green marks the head (the dog's tail sticks up higher than his head)
+    function scan(test) { for (var y = 0; y < ch; y++) { var sx = 0, n = 0; for (var x = 0; x < cw; x++) { var i = (y * cw + x) * 4; if (test(d[i], d[i + 1], d[i + 2], d[i + 3])) { sx += x; n++; } } if (n >= 4) return { x: sx / n, y: y }; } return null; }
+    r = scan(function (R0, G, B0, A) { return A > 200 && G > R0 + 8 && G > B0 + 18 && G < 170 && R0 < 150; }) || scan(function (R0, G, B0, A) { return A > 140; });
+  } catch (e) { r = null; }
+  return HEADS[key] = r;
+}
+function drawCrown(x, y, s, kind) { // gold crown that sits on the king's and queen's heads, bobbing with them
+  ctx.save(); ctx.translate(x, y + Math.sin(now() / 220) * s * .05);
+  var w = s, hgt = s * (kind === 'queen' ? .8 : .62);
+  ctx.fillStyle = '#ffcc2e'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = Math.max(1.2, s * .07);
+  ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2, -hgt);
+  var pts = kind === 'queen' ? 5 : 3;
+  for (var i = 0; i < pts; i++) { var x0 = -w / 2 + w * i / pts, x1 = x0 + w / pts; ctx.lineTo(x0 + w / pts / 2, -hgt * (kind === 'queen' ? .55 : .45)); ctx.lineTo(x1, -hgt); }
+  ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = kind === 'queen' ? '#5ad1ff' : '#e8322a'; ctx.beginPath(); ctx.arc(0, -hgt * .3, s * .1, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(-w / 2 + s * .08, -s * .14, w - s * .16, s * .06);
+  ctx.restore();
+}
 // ---------- shots and effects ----------
-var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5] };
+var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4] };
 function drawShot(s) {
   var p = toScreen(s.x, s.y, s.z), g = toScreen(s.x, s.y), st = SHOT[s.kind] || SHOT.pebble, r = st[1] * cam.s / 40;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y, r, r * .5, 0, 0, 7); ctx.fill();
   ctx.fillStyle = st[0]; ctx.strokeStyle = 'rgba(60,40,20,.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill(); ctx.stroke();
   if (s.kind === 'cracker') { ctx.fillStyle = '#ffd23f'; ctx.fillRect(p.x - r * .5, p.y - r * 1.6, r, r * .6); ctx.fillStyle = 'rgba(255,220,120,' + (.5 + Math.random() * .5) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y - r * 2, r * .5, 0, 7); ctx.fill(); }   // lit fuse
+  if (s.kind === 'feather') { var ang = Math.atan2((s.ty - s.fy) * ISO, s.tx - s.fx); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 2.4, r * .7, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * 2.4, 0); ctx.lineTo(r * 2.4, 0); ctx.stroke(); ctx.restore(); }
   if (s.kind === 'water') { ctx.fillStyle = 'rgba(160,230,255,.5)'; ctx.beginPath(); ctx.arc(p.x - r * .3, p.y - r * .3, r * .45, 0, 7); ctx.fill(); }
 }
 function drawFx(f, dt) {
@@ -956,6 +1031,13 @@ function selectBuilding(b, keepGroup) {
     bc.onclick = function () { if (fillWithCoins(r)) { selectBuilding(b); hud(); } }; row2.appendChild(bc);
     p.appendChild(row2);
   }
+  if (d.kind === 'hero') { var hl = h('div', 'p-heroes');
+    HERO_KEYS.forEach(function (k) { var u = U[k], open = b.lv > 0 && hqLv() >= u.hq, rest = heroRest(k), cell = h('div', 'hcell' + (open ? '' : ' off'));
+      cell.innerHTML = '<span class="portrait" style="' + heroThumb(k) + '"></span><b>' + (u.crown ? '👑 ' : '🎖 ') + u.name + '</b><small>' +
+        (!open ? 'ปลดล็อกบ้านเป็ดเลเวล ' + u.hq : rest ? '💫 พักฟื้น ' + clock(rest) : 'Lv' + b.lv + ' · ♥' + fmt(uHp(k, b.lv)) + ' · ⚔' + fmt(uDmg(k, b.lv))) + '</small><small class="sk">⚡ ' + u.skill + ': ' + u.skillTxt + '</small>';
+      if (open && rest) { var wk = h('button', 'btn gold', 'ปลุกทันที ' + costTag('coin', coinsFor(rest))); wk.onclick = function () { if (heroWake(k)) { selectBuilding(b, true); hud(); } }; cell.appendChild(wk); }
+      hl.appendChild(cell); });
+    p.appendChild(hl); }
   if (d.kind === 'train' || d.kind === 'camp') { var a = h('button', 'btn', '🪖 กองทัพ'); a.onclick = armyMenu; row.appendChild(a); }
   p.appendChild(row); p.appendChild(h('div', 'note drag-hint', '✋ แตะค้างแล้วลากเพื่อย้าย' + (group && group.length > 1 ? 'ทั้งแถว' : ''))); p.classList.add('open');
   if (fresh) keepClearOfPanel(b);
@@ -1021,7 +1103,7 @@ function armyMenu() {
 
 // ---------- attack ----------
 function attackMenu() {
-  if (!armyUsed()) { toast('ยังไม่มีทหาร ไปฝึกที่ลานฝึกเป็ดก่อน'); armyMenu(); return; }
+  if (!armyUsed() && !HERO_KEYS.some(function (k) { return heroOpen(k) && !heroRest(k); })) { toast('ยังไม่มีทหาร ไปฝึกที่ลานฝึกเป็ดก่อน'); armyMenu(); return; }
   openSheet('บุกฐานแมว', function (body) {
     body.appendChild(h('p', 'note', 'เลือกด่าน ด่านต่อไปเปิดเมื่อได้อย่างน้อย 1 ดาว'));
     var grid = h('div', 'levels');
@@ -1033,8 +1115,18 @@ function attackMenu() {
   });
 }
 function enterRaid(n) { startRaid(n); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
+function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
+  var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
+  var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
+}
 function raidBar() {
   var bar = $('troops'); bar.innerHTML = '';
+  HERO_KEYS.forEach(function (k) {
+    var hs = R.heroes[k]; if (!hs) return; var u = U[k], dead = hs.unit && hs.unit.dead, st = hs.state === 'ready' ? (R.pick === k ? ' on' : '') : dead || hs.used ? ' off' : ' skill';
+    var lab = hs.state === 'ready' ? 'Lv' + hs.lv : dead ? '💫' : hs.used ? '✓' : '⚡สกิล';
+    var c = h('button', 'tcard hero' + st, '<span class="cnt">' + lab + '</span><span class="portrait" style="' + heroThumb(k) + '"></span>' + (u.crown ? '<span class="crown">👑</span>' : '<span class="crown">🎖</span>') + '<small>' + u.name + '</small>');
+    c.onclick = function () { if (hs.state === 'ready') { R.pick = k; raidBar(); } else if (heroSkill(k)) raidBar(); }; bar.appendChild(c);
+  });
   Object.keys(R.army).forEach(function (k) {
     if (!(R.army[k] > 0) && R.pick !== k) return;
     var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + U[k].art + '.webp)"></span><small>' + U[k].name + '</small>');

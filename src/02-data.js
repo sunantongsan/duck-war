@@ -15,6 +15,7 @@ var B = {
   camp:          { name: 'ค่ายพักเป็ด',        size: 3, art: 'camp',          hp: 400, res: 'veggie', cost: 200, time: 8, kind: 'camp', space: 20, max: [1, 2, 2, 3, 3, 4, 4, 4] },
   barracks:      { name: 'ลานฝึกเป็ด',         size: 2, art: 'barracks',      hp: 450, res: 'veggie', cost: 150, time: 6, kind: 'train', max: [1, 2, 2, 3, 3, 4, 4, 4] },
   lab:           { name: 'ห้องทดลองเป็ด',      size: 2, art: 'lab',           hp: 500, res: 'veggie', cost: 5000, time: 30, kind: 'lab', unlock: 3, max: [0, 0, 1, 1, 1, 1, 1, 1] },
+  herohall:      { name: 'ศาลาผู้นำเป็ด',      size: 2, art: 'hero',          hp: 900, res: 'honey', cost: 8000, time: 40, kind: 'hero', unlock: 3, max: [0, 0, 1, 1, 1, 1, 1, 1] },
   workshop:      { name: 'โรงนาช่างเป็ด',      size: 2, art: 'workshop',      hp: 500, res: 'honey', cost: 4000, time: 30, kind: 'deco', unlock: 4, max: [0, 0, 0, 1, 1, 1, 1, 1] },
   slingshot:     { name: 'หนังสติ๊กยักษ์',      size: 2, turret: 'slingshot',  hp: 520, res: 'honey', cost: 250, time: 8, kind: 'defense', range: 6.5, dmg: 18, rate: 0.9, shot: 'rock', ground: true, max: [2, 2, 3, 3, 4, 4, 5, 5] },
   boxtower:      { name: 'หอกล่องเป็ดยิงไกล',   size: 2, turret: 'boxtower',   hp: 480, res: 'honey', cost: 1000, time: 15, kind: 'defense', range: 8, dmg: 11, rate: 0.75, shot: 'pebble', ground: true, air: true, unlock: 2, max: [0, 1, 2, 2, 3, 3, 4, 4] },
@@ -51,13 +52,21 @@ var U = {   // Clash counterpart in the comment; unlock = training-yard level
   witch:   { name: 'เป็ดแม่มด',             art: 'witch',   h: 1.05, space: 12, cost: 150,  res: 'syrup',  time: 90,  hp: 160,  dmg: 25,  rate: 1.4, range: 3.5, speed: 1.3,  pref: 'any',      hit: 'magic', summon: 'duckling', unlock: 9 },   // witch: raises ducklings
   fan:     { name: 'เป็ดพัดลม',             art: 'fan',     h: 1.7,  space: 30, cost: 250,  res: 'syrup',  time: 120, hp: 2400, dmg: 6,   rate: 1,   range: 1,   speed: 1.0,  pref: 'airdef',   hit: 'shot', air: true, split: 'fanlet', unlock: 9 },   // lava hound: hunts anti-air, bursts into small fans
   dog:     { name: 'หมาดัลเมเชียน',          art: 'dog',     h: 1.45, space: 10, cost: 300,  res: 'syrup',  time: 90,  hp: 1100, dmg: 70,  rate: 1.2, range: 0.7, speed: 1.1,  pref: 'any',      hit: 'bite', unlock: 9 },                       // yeti
+  // heroes: never trained; they come from the leaders' hall (ศาลาผู้นำเป็ด), one each per raid, and level with the hall
+  h_colonel: { name: 'ผู้พันเป็ด',          art: 'colonel', h: 3.0,  space: 0, hp: 950,  dmg: 38,  rate: 1.2, range: 0.7, speed: 1.55, pref: 'defense', hit: 'smash', hero: true, hidden: true, hq: 3, aura: 3.5,
+               skill: 'เป่านกหวีดบุก!', skillTxt: 'ทหารรอบตัวเร็วขึ้น ตีแรงขึ้น และฟื้นเลือด' },                          // grand warden: walks at the front, ducks near him hit harder
+  h_king:    { name: 'ราชาดัลเมเชียน',      art: 'dog',     h: 2.2,  space: 0, hp: 1900, dmg: 95,  rate: 1.2, range: 0.8, speed: 1.25, pref: 'any',     hit: 'bite',  hero: true, hidden: true, hq: 5, crown: 'king',
+               skill: 'หอนเรียกพล', skillTxt: 'ฟื้นเลือด คลั่ง และเรียกเป็ดส้อมมาช่วย' },                                    // barbarian king
+  h_queen:   { name: 'ราชินีนกกระยาง',      art: 'egret',   h: 2.3,  space: 0, hp: 850,  dmg: 62,  rate: 0.9, range: 3.8, speed: 1.4,  pref: 'any',     hit: 'shot', shot: 'feather', hero: true, hidden: true, hq: 7, crown: 'queen',
+               skill: 'ม่านขนนก', skillTxt: 'หายตัว ป้อมยิงไม่เห็น และยิงแรงขึ้นสองเท่า' },                                // archer queen: darts feathers from range
   // not trainable: made by other troops
   duckling: { name: 'ลูกเป็ด', art: 'fork', h: 0.55, space: 0, hp: 22, dmg: 6, rate: 1, range: 0.5, speed: 2.0, pref: 'any', hit: 'stab', hidden: true },
   fanlet:   { name: 'พัดลมจิ๋ว', art: 'fan',  h: 0.75, space: 0, hp: 45, dmg: 9, rate: 1, range: 2, speed: 2.0, pref: 'any', hit: 'shot', air: true, hidden: true }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });
-function uHp(k, lv) { return grow(U[k].hp, lv || 1, 1.18); }
-function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, 1.18); }
+function uHp(k, lv) { return grow(U[k].hp, lv || 1, U[k].hero ? 1.1 : 1.18); }
+function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, U[k].hero ? 1.1 : 1.18); }
+var HERO_KEYS = ['h_colonel', 'h_king', 'h_queen'];
 var HEROES = { colonel: { name: 'ผู้พันเป็ด', art: 'colonel', h: 3.0, speed: 0.8 } };   // hero-sized, like a Clash king
 var CATS = { cat_spatula: { art: 'cat_spatula', h: 1, hp: 120, dmg: 12, rate: 1, range: 0.6, speed: 1.5, hit: 'smash' },
              cat_pan: { art: 'cat_pan', h: 1.15, hp: 260, dmg: 16, rate: 1.3, range: 0.6, speed: 1.1, hit: 'smash' },
