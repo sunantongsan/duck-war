@@ -64,6 +64,14 @@ var U = {   // Clash counterpart in the comment; unlock = training-yard level
   fanlet:   { name: 'พัดลมจิ๋ว', art: 'fan',  h: 0.75, space: 0, hp: 45, dmg: 9, rate: 1, range: 2, speed: 2.0, pref: 'any', hit: 'shot', air: true, hidden: true }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });
+// flyers cruise well above the rooftops (tiles of height), bobbing a little; they sink to the ground when shot down
+var AIR_ALT = { balloon: 2.5, plane: 1.9, prop: 2.1, kite: 2.9, fan: 2.3, fanlet: 1.5 };
+function airAlt(t) {
+  var u = U[t.kind]; if (!u || !u.air || t.side !== 'duck') return 0;
+  var a = (AIR_ALT[t.kind] || 2) + Math.sin(now() / 420 + t.x * 1.7) * .12;
+  if (t.dead) a *= Math.max(0, 1 - (now() - (t.deadAt || now())) / 550);
+  return a;
+}
 function uHp(k, lv) { return grow(U[k].hp, lv || 1, U[k].hero ? 1.1 : 1.18); }
 function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, U[k].hero ? 1.1 : 1.18); }
 var HERO_KEYS = ['h_colonel', 'h_king', 'h_queen'];

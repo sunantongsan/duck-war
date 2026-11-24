@@ -275,6 +275,14 @@ var U = {   // Clash counterpart in the comment; unlock = training-yard level
   fanlet:   { name: 'พัดลมจิ๋ว', art: 'fan',  h: 0.75, space: 0, hp: 45, dmg: 9, rate: 1, range: 2, speed: 2.0, pref: 'any', hit: 'shot', air: true, hidden: true }
 };
 Object.keys(U).forEach(function (k) { U[k].key = k; });
+// flyers cruise well above the rooftops (tiles of height), bobbing a little; they sink to the ground when shot down
+var AIR_ALT = { balloon: 2.5, plane: 1.9, prop: 2.1, kite: 2.9, fan: 2.3, fanlet: 1.5 };
+function airAlt(t) {
+  var u = U[t.kind]; if (!u || !u.air || t.side !== 'duck') return 0;
+  var a = (AIR_ALT[t.kind] || 2) + Math.sin(now() / 420 + t.x * 1.7) * .12;
+  if (t.dead) a *= Math.max(0, 1 - (now() - (t.deadAt || now())) / 550);
+  return a;
+}
 function uHp(k, lv) { return grow(U[k].hp, lv || 1, U[k].hero ? 1.1 : 1.18); }
 function uDmg(k, lv) { return grow(U[k].dmg, lv || 1, U[k].hero ? 1.1 : 1.18); }
 var HERO_KEYS = ['h_colonel', 'h_king', 'h_queen'];
@@ -628,7 +636,8 @@ function damage(target, amount, from) {
 }
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
   var tx = to.k ? center(to).x : to.x, ty = to.k ? center(to).y : to.y, d = Math.hypot(tx - sx, ty - sy);
-  R.shots.push({ kind: kind, x: sx, y: sy, z: sz || .8, fx: sx, fy: sy, fz: sz || .8, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
+  var tz = to.k ? 0 : airAlt(to) * .9; sz = (sz || .8) + (from && !from.k ? airAlt(from) * .85 : 0);
+  R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
 }
 function troopTick(t, dt) {
   if (t.dead) return;
@@ -759,7 +768,7 @@ function turretTick(b, dt) {
 function shotTick(s, dt) {
   s.t += dt; var k = Math.min(1, s.t / s.dur);
   if (s.target && !s.target.dead && !s.target.k) { s.tx = s.target.x; s.ty = s.target.y; }
-  s.x = s.fx + (s.tx - s.fx) * k; s.y = s.fy + (s.ty - s.fy) * k; s.z = s.fz * (1 - k) + Math.sin(k * Math.PI) * s.arc;
+  s.x = s.fx + (s.tx - s.fx) * k; s.y = s.fy + (s.ty - s.fy) * k; s.z = s.fz * (1 - k) + (s.tz || 0) * k + Math.sin(k * Math.PI) * s.arc;
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
@@ -1309,15 +1318,17 @@ function drawTroop(t) {
   var dir = ((Math.round((t.face === undefined ? Math.PI / 2 : t.face) / (Math.PI / 4)) % 8) + 8) % 8, col, n = now(), alpha = 1;
   var atkQ = t.atk ? (n - t.atk) / 520 : 9;
   if (t.dead) { var dq = (n - t.deadAt) / 1000; col = L.death[0] + Math.min(L.death[1] - 1, Math.floor(dq / .14)); alpha = dq < 1.2 ? 1 : Math.max(0, 1 - (dq - 1.2) / .6); if (alpha <= 0) return; }
-  else if (atkQ < 1) col = L.attack[0] + Math.min(L.attack[1] - 1, Math.floor(atkQ * L.attack[1]));
+  else if (atkQ < 1) { var AS = atkStyle(t, u), fr = AS.frames[Math.min(AS.frames.length - 1, Math.floor(atkQ * AS.frames.length))]; col = fr < 0 ? L.idle[0] : L.attack[0] + fr; }
   else if (t.moving) col = L.walk[0] + Math.floor((t.walk || 0) * 9) % L.walk[1];
   else col = L.idle[0] + Math.floor(n / 180 + (t.x * 7 | 0)) % L.idle[1];
   var p = toScreen(t.x, t.y), k = u.h * cam.s * 1.05 / a.h, sx = 1, sy = 1, ox = 0, oy = 0, m = cam.s * 2;
   if (p.x < -m || p.x > view.w + m || p.y < -m * .5 || p.y > view.h + m * 1.5) return;   // off screen: skip
-  if (!t.dead && atkQ < 1) { // wind-up stretch, then lunge and squash flat on the hit, spring back
-    var hit = atkQ < .35 ? 0 : Math.sin(Math.min(1, (atkQ - .35) / .45) * Math.PI), up = atkQ < .35 ? Math.sin(atkQ / .35 * Math.PI) : 0;
-    var fx = Math.cos(t.face) - Math.sin(t.face), fy = (Math.cos(t.face) + Math.sin(t.face)) * ISO, fl = Math.hypot(fx, fy) || 1;
-    ox = fx / fl * hit * .3 * cam.s; oy = fy / fl * hit * .3 * cam.s; sx = 1 - .14 * up + .3 * hit; sy = 1 + .2 * up - .25 * hit;
+  var alt = airAlt(t), rot = 0, pose = null, fx = Math.cos(t.face || 0) - Math.sin(t.face || 0), fy = (Math.cos(t.face || 0) + Math.sin(t.face || 0)) * ISO, fl = Math.hypot(fx, fy) || 1; fx /= fl; fy /= fl;
+  if (u.air && !t.dead && t.moving) rot = Math.sin(n / 300 + t.x) * .05;   // flyers sway as they cruise
+  if (!t.dead && atkQ < 1) { // every kind of troop attacks its own way (see ATK_POSE)
+    pose = ATK_POSE[atkStyle(t, u).pose](atkQ, t, n);
+    ox = fx * (pose.f || 0) * cam.s + (pose.jx || 0) * cam.s; oy = fy * (pose.f || 0) * cam.s - (pose.lift || 0) * ZUP * cam.s;
+    sx = pose.sx || 1; sy = pose.sy || 1; rot += pose.rot || 0; if (pose.dir) dir = (dir + pose.dir) % 8;
   } else if (t.moving) { var b = Math.sin((t.walk || 0) * 9 * Math.PI / 4); sy = 1 + .06 * b; sx = 1 - .05 * b; }
   else if (!t.dead) { var br = Math.sin(n / 260 + t.x); sy = 1 + .025 * br; sx = 1 - .02 * br; }
   if (t.born && n - t.born < 400) { var bq = (n - t.born) / 400, bw = Math.exp(-5 * bq) * Math.sin(bq * 18); sx *= 1 + bw * .3; sy *= 1 - bw * .3; }
@@ -1327,15 +1338,63 @@ function drawTroop(t) {
     var rr = (u.aura || .75) * cam.s; ctx.strokeStyle = 'rgba(255,205,60,' + (u.aura ? .45 : .7) + ')'; ctx.lineWidth = 2.5; ctx.setLineDash(u.aura ? [8, 6] : []);
     ctx.beginPath(); ctx.ellipse(p.x, p.y, rr, rr * ISO, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
   if (t.fast > n && !t.dead) { ctx.fillStyle = 'rgba(255,120,40,.22)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .55 * cam.s, .3 * cam.s, 0, 0, 7); ctx.fill(); }
-  var sh = u.air ? .14 : .32, rw = sh * cam.s * Math.min(u.h, 1.6); ctx.globalAlpha = alpha * (u.air ? .18 : .28); ctx.drawImage(shadowImg(), p.x - rw, p.y - rw * .5, rw * 2, rw); ctx.globalAlpha = alpha;
-  ctx.setTransform(dpr * sx, 0, 0, dpr * sy, (p.x + ox) * dpr, (p.y + oy) * dpr);
+  var sh = u.air ? .3 / (1 + alt * .15) : .32, rw = sh * cam.s * Math.min(u.h, 1.6); ctx.globalAlpha = alpha * (u.air ? .3 : .28); ctx.drawImage(shadowImg(), p.x - rw, p.y - rw * .5, rw * 2, rw); ctx.globalAlpha = alpha;
+  oy -= alt * ZUP * cam.s;
+  if (pose && pose.under) pose.under(ctx, p.x + ox, p.y + oy + alt * ZUP * cam.s, fx, fy, atkQ, u);   // ground effects (slam ring, whirl)
+  var cr = Math.cos(rot), sr = Math.sin(rot);
+  ctx.setTransform(dpr * sx * cr, dpr * sx * sr, -dpr * sy * sr, dpr * sy * cr, (p.x + ox) * dpr, (p.y + oy) * dpr);
   var cw = a.cw || L.cw, ch = a.ch || L.ch, sh = sheetFor(im, cw, ch, troopNeed(u, a)), row = sh && sh.rows[dir];
   if (row) { var gi = Math.floor(col / sh.per); ctx.drawImage(row[gi], (col - gi * sh.per) * sh.cw, 0, sh.cw, sh.ch, -a.ax * k, -a.ay * k, cw * k, ch * k); }
   else ctx.drawImage(im, col * cw, dir * ch, cw, ch, -a.ax * k, -a.ay * k, cw * k, ch * k);
   if (u.crown && !t.dead) { var ht = headTop(im, col, dir, cw, ch); if (ht) drawCrown((ht.x - a.ax) * k, (ht.y - a.ay) * k + cam.s * .1, cam.s * .5, u.crown); }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1;
-  if (!t.dead && t.hp < t.max) hpBar(t.x, t.y, u.h * 1.45, t.hp / t.max, t.side === 'cat' ? '#ff6b5a' : '#7be36a');
+  if (pose && pose.over) pose.over(ctx, p.x + ox, p.y + oy, fx, fy, atkQ, u, k);   // weapon effects in front (thrust streaks, sparkles)
+  if (!t.dead && t.hp < t.max) hpBar(t.x, t.y, u.h * 1.45 + alt, t.hp / t.max, t.side === 'cat' ? '#ff6b5a' : '#7be36a');
 }
+// ---------- attack styles: which baked frames to use (the shared atlas attack bows forward, which reads as a peck,
+// so only birds and the dog keep that frame) and how the body moves. Frames: 0 ready, 1 wind-up, 2 forward bow, 3 recover, -1 idle.
+var ATK_KIND = { egret: 'peck', h_queen: 'shoot', dog: 'bite', h_king: 'bite', mop: 'spin', pig: 'stomp', chef: 'throw', witch: 'magic', nurse: 'heal',
+  plane: 'dive', kite: 'swoop', prop: 'hover', fan: 'blow', fanlet: 'blow', balloon: 'flail', bomber: 'blast', duckling: 'stab' };
+var ATK_HIT = { stab: 'stab', shot: 'shoot', smash: 'smash', bite: 'bite', fire: 'throw', magic: 'magic', heal: 'heal', spin: 'spin', blast: 'blast', cracker: 'flail' };
+var ATK_FRAMES = { stab: [1, 0, 1, 0], shoot: [1, 1, 0, 0], smash: [1, 1, 3, 3], stomp: [1, 1, 3, 3], throw: [1, 1, 0, 0], magic: [1, 1, 1, 0], heal: [1, 0, 0, 0],
+  spin: [-1], peck: [0, 1, 1, 0], bite: [0, 2, 2, 3], dive: [-1], swoop: [-1], hover: [-1], blow: [-1], flail: [-1], blast: [1, 1, 3, 3], classic: [0, 1, 2, 3] };
+function atkStyle(t, u) { var k = t.side === 'hero' ? 'classic' : t.side === 'cat' ? 'smash' : ATK_KIND[t.kind] || ATK_HIT[u.hit] || 'stab'; return { pose: k, frames: ATK_FRAMES[k] }; }
+function bell(q, a, b) { return q < a || q > b ? 0 : Math.sin((q - a) / (b - a) * Math.PI); }
+function streak(c, x, y, fx, fy, len, w, col, a) { c.strokeStyle = col; c.globalAlpha = a; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + fx * len, y + fy * len); c.stroke(); c.globalAlpha = 1; }
+var ATK_POSE = {
+  classic: function (q) { var hit = q < .35 ? 0 : Math.sin(Math.min(1, (q - .35) / .45) * Math.PI), up = q < .35 ? Math.sin(q / .35 * Math.PI) : 0;   // the colonel's salute at home
+    return { f: .3 * hit, sx: 1 - .14 * up + .3 * hit, sy: 1 + .2 * up - .25 * hit }; },
+  stab: function (q) { var j = bell(q, 0, .45) + bell(q, .5, .95); return { f: .32 * j, sx: 1 + .16 * j, sy: 1 - .1 * j,   // two quick fork jabs
+    over: function (c, x, y, fx, fy, q, u) { var j2 = Math.max(bell(q, .1, .45), bell(q, .6, .95)); if (j2 > .4) streak(c, x + fx * cam.s * .35, y - u.h * cam.s * .45, fx, fy, cam.s * .45 * j2, 2.5 * cam.s / 40, '#ffffff', j2 * .9); } }; },
+  shoot: function (q) { var back = q < .4 ? q / .4 : 0, kick = q >= .4 ? Math.exp(-(q - .4) * 12) : 0;   // draw back, let go, small kick back
+    return { f: -.12 * back - .1 * kick, sx: 1 - .08 * back + .12 * kick, sy: 1 + .08 * back - .1 * kick, rot: -.08 * back }; },
+  smash: function (q) { var up = q < .45 ? Math.sin(q / .45 * Math.PI / 2) : Math.max(0, 1 - (q - .45) / .1), land = q > .55 ? Math.exp(-(q - .55) * 9) : 0;   // jump, then slam down
+    return { lift: .6 * up, f: .12 * up, sx: 1 - .12 * up + .4 * land, sy: 1 + .2 * up - .32 * land,
+      under: function (c, x, y, fx, fy, q, u) { if (q < .55) return; var r = (q - .55) / .45; c.strokeStyle = 'rgba(255,240,190,' + (1 - r) * .9 + ')'; c.lineWidth = 4 * cam.s / 40 * (1 - r) + 1;
+        c.beginPath(); c.ellipse(x + fx * cam.s * .3, y + fy * cam.s * .3, cam.s * (.3 + r * .9) * Math.min(1.5, u.h), cam.s * (.3 + r * .9) * Math.min(1.5, u.h) * ISO, 0, 0, 7); c.stroke(); } }; },
+  stomp: function (q) { var up = bell(q, 0, .5), land = q > .5 ? Math.exp(-(q - .5) * 10) : 0;   // the pig rears up and stamps
+    return { lift: .35 * up, rot: -.25 * up, f: .2 * land, sx: 1 + .3 * land, sy: 1 + .1 * up - .25 * land, under: ATK_POSE.smash(Math.max(.55, q)).under }; },
+  throw: function (q) { var back = q < .35 ? q / .35 : 0, fling = bell(q, .35, .9);   // lean back, then fling the chili forward
+    return { f: -.14 * back + .22 * fling, rot: -.15 * back + .12 * fling, sx: 1 + .12 * fling, sy: 1 - .06 * fling + .06 * back }; },
+  magic: function (q, t, n) { var up = Math.sin(q * Math.PI); return { lift: .45 * up, sx: 1 - .05 * up, sy: 1 + .1 * up, dir: Math.floor(q * 8) % 8,   // floats up in a twirl
+    over: function (c, x, y, fx, fy, q, u) { for (var i = 0; i < 7; i++) { var a = q * 9 + i * .9, rr = cam.s * (.35 + .2 * Math.sin(q * 6 + i));
+      c.fillStyle = 'rgba(200,120,255,' + (1 - q) + ')'; c.beginPath(); c.arc(x + Math.cos(a) * rr, y - u.h * cam.s * .5 + Math.sin(a) * rr * .5, 2.5 * cam.s / 40 + 1, 0, 7); c.fill(); } } }; },
+  heal: function (q) { var h = Math.sin(q * Math.PI); return { lift: .28 * h, sy: 1 + .12 * h, sx: 1 - .06 * h,
+    under: function (c, x, y, fx, fy, q) { c.fillStyle = 'rgba(120,240,140,' + (.35 * (1 - q)) + ')'; c.beginPath(); c.ellipse(x, y, cam.s * (.4 + q), cam.s * (.4 + q) * ISO, 0, 0, 7); c.fill(); } }; },
+  spin: function (q) { return { dir: Math.floor(q * 16) % 8, sx: 1.1, sy: .94, lift: .08 * Math.sin(q * Math.PI),   // the mop whirls round twice
+    under: function (c, x, y, fx, fy, q, u) { c.strokeStyle = 'rgba(255,255,255,' + (.7 * Math.sin(q * Math.PI)) + ')'; c.lineWidth = 3 * cam.s / 40 + 1; var r = cam.s * (u.spin || 1);
+      for (var i = 0; i < 2; i++) { var a0 = q * 14 + i * Math.PI; c.beginPath(); c.ellipse(x, y - cam.s * .2, r, r * ISO, 0, a0, a0 + 1.6); c.stroke(); } } }; },
+  peck: function (q) { var up = q < .4 ? Math.sin(q / .4 * Math.PI / 2) : 0, hit = bell(q, .4, .85);   // the egret rears tall, then stabs its beak down
+    return { f: .38 * hit, sx: 1 - .12 * up + .25 * hit, sy: 1 + .25 * up - .2 * hit, lift: .1 * up }; },
+  bite: function (q) { var hit = bell(q, .2, .7); return { f: .34 * hit, rot: q > .35 && q < .9 ? Math.sin(q * 55) * .14 : 0, sx: 1 + .15 * hit, sy: 1 - .1 * hit }; },   // lunge and shake
+  dive: function (q) { var d = Math.sin(q * Math.PI); return { lift: -.9 * d, f: .35 * d, rot: .3 * d }; },          // paper plane swoops at the target
+  swoop: function (q) { var d = Math.sin(q * Math.PI); return { lift: -1.2 * d, f: .25 * d, rot: .18 * d, sx: 1 + .08 * d }; },
+  hover: function (q) { var d = Math.sin(q * Math.PI); return { rot: .22 * d, f: .15 * d, jx: Math.sin(q * 70) * .03 }; },   // propeller duck tilts in to fire
+  blow: function (q) { return { jx: Math.sin(q * 90) * .04, sx: 1 + .06 * Math.sin(q * 40), sy: 1 - .04 * Math.sin(q * 40),   // the fan shudders and blows
+    over: function (c, x, y, fx, fy, q, u) { for (var i = -1; i <= 1; i++) streak(c, x + fx * cam.s * (.3 + q * .6) - fy * i * cam.s * .2, y - u.h * cam.s * .4 + fx * i * cam.s * .1, fx, fy, cam.s * .35, 2, '#e8f6ff', .8 * (1 - q)); } }; },
+  flail: function (q) { return { rot: Math.sin(q * 30) * .2, jx: Math.sin(q * 23) * .03, lift: .15 * Math.sin(q * Math.PI) }; },   // dangling balloon duck kicks about as it drops the cracker
+  blast: function (q) { var w = Math.sin(q * 50) * .5 + .5; return { sx: 1 + .2 * q + .06 * w, sy: 1 + .15 * q - .06 * w }; }
+};
 
 // Where the crown sits = top of the head in each animation frame. Finding it means reading pixels back from the image,
 // which took ~30 ms a time on phones and froze raids whenever the king or queen showed a new pose. Now whole sheet rows

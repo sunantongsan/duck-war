@@ -172,7 +172,8 @@ function damage(target, amount, from) {
 }
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
   var tx = to.k ? center(to).x : to.x, ty = to.k ? center(to).y : to.y, d = Math.hypot(tx - sx, ty - sy);
-  R.shots.push({ kind: kind, x: sx, y: sy, z: sz || .8, fx: sx, fy: sy, fz: sz || .8, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
+  var tz = to.k ? 0 : airAlt(to) * .9; sz = (sz || .8) + (from && !from.k ? airAlt(from) * .85 : 0);
+  R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
 }
 function troopTick(t, dt) {
   if (t.dead) return;
@@ -303,7 +304,7 @@ function turretTick(b, dt) {
 function shotTick(s, dt) {
   s.t += dt; var k = Math.min(1, s.t / s.dur);
   if (s.target && !s.target.dead && !s.target.k) { s.tx = s.target.x; s.ty = s.target.y; }
-  s.x = s.fx + (s.tx - s.fx) * k; s.y = s.fy + (s.ty - s.fy) * k; s.z = s.fz * (1 - k) + Math.sin(k * Math.PI) * s.arc;
+  s.x = s.fx + (s.tx - s.fx) * k; s.y = s.fy + (s.ty - s.fy) * k; s.z = s.fz * (1 - k) + (s.tz || 0) * k + Math.sin(k * Math.PI) * s.arc;
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
