@@ -4,8 +4,8 @@ from mathutils import Vector, Euler
 OUT = "/home/claude/duck"
 VARIANT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else "soldier"
 import mathutils
-HOVER = {"pig_rider": 0.38, "balloon": 0.0, "nurse": 0.55, "kite": 0.75, "prop": 0.5, "fan": 0.6, "plane": 0.7}.get(VARIANT, 0.0)
-FLYERS = ("nurse", "kite", "prop", "fan", "plane")
+HOVER = {"pig_rider": 0.38, "balloon": 0.0, "nurse": 0.55, "kite": 0.75, "prop": 0.0, "fan": 0.6, "plane": 0.7}.get(VARIANT, 0.0)
+FLYERS = ("nurse", "kite", "fan", "plane")
 EG = VARIANT in ("egret", "egret_guard")
 COL = VARIANT.startswith("colonel")
 RANK = {"colonel_r1": 1, "colonel_r3": 3}.get(VARIANT, 2)
@@ -33,6 +33,8 @@ def mat(name, rgb, rough=0.5, sss=0.0, spec=0.5, emis=None, metal=0.0, emit=0.0)
     return m
 
 M = {
+    "fanwood": mat("FanWood", (0.5, 0.28, 0.11), 0.45),
+    "tomato": mat("Tomato", (0.85, 0.04, 0.02), 0.25, sss=0.15),
     "yellow": mat("Feather", (1.0, 0.62, 0.0), 0.55, sss=0.1),
     "yellow2": mat("FeatherDark", (0.95, 0.55, 0.02), 0.6),
     "orange": mat("Beak", (1.0, 0.22, 0.0), 0.35),
@@ -490,15 +492,31 @@ if VARIANT == "kite":
     throw_prop_bone(G, 0.12)
 
 if VARIANT == "prop":
-    sphere((0, -0.08, 1.0), (0.255, 0.255, 0.17), "red", "head")
-    sphere((0, -0.08, 1.17), (0.03, 0.03, 0.03), "gold", "head")
-    for k in range(2):
-        a = k * math.pi
-        sphere((0.13 * math.cos(a), -0.08 + 0.13 * math.sin(a), 1.2), (0.13, 0.035, 0.01), "basket" if k else "gold", "prop", rot=(12 if k else -12, 0, 0))
-    EXTRA_BONES.append(("prop", Vector((0, -0.08, 1.12)), Vector((0, -0.08, 1.25)), "head"))
+    # Built upright, flipped head-down at the end (like the balloon duck): a big ceiling fan is stuck to the duck's
+    # butt and its spinning blades haul the little duck up into the air. It drops tomato bombs.
+    FZ = -0.30   # fan hub height (below the feet while upright = above the duck once flipped)
+    along("cyl", (0, 0.06, 0.2), (0, 0.06, FZ + 0.08), 0.035, 0.035, "alu", "fan", 0)            # down-rod into the duck's bottom
+    cyl((0, 0.06, 0.19), 0.075, 0.05, "alu", "fan")                                                  # canopy cup on the butt
+    cyl((0, 0.06, FZ), 0.19, 0.13, "gold", "fan")                                                    # motor housing
+    cyl((0, 0.06, FZ - 0.075), 0.2, 0.025, "fanwood", "fan")                                            # trim ring
+    sphere((0, 0.06, FZ - 0.1), (0.09, 0.09, 0.06), "alu", "fan")                                    # end cap
+    for k in range(5):
+        a = k * 2 * math.pi / 5; c, s_ = math.cos(a), math.sin(a)
+        along("cyl", (0.16 * c, 0.06 + 0.16 * s_, FZ - 0.02), (0.3 * c, 0.06 + 0.3 * s_, FZ - 0.03), 0.018, 0.018, "iron", "prop", 0)   # blade iron
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0.68 * c, 0.06 + 0.68 * s_, FZ - 0.035))
+        o = bpy.context.active_object; o.scale = (0.8, 0.2, 0.022); o.rotation_euler = (math.radians(12), 0, a)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        m = o.modifiers.new("b", "BEVEL"); m.width = 0.03; m.segments = 3
+        finish(o, "fanwood", "prop", 0, smooth=False)
+    EXTRA_BONES.append(("fan", Vector((0, 0.06, 0.05)), Vector((0, 0.06, FZ - 0.05)), "root"))
+    EXTRA_BONES.append(("prop", Vector((0, 0.06, FZ)), Vector((0, 0.06, FZ - 0.15)), "fan"))
+    # tomato bomb in the left wing, thrown while attacking
     G = Vector((0.35, -0.13, 0.46))
-    sphere((0.36, -0.2, 0.55), (0.06, 0.06, 0.03), "cracker", "weapon", rot=(70, 0, 0))
-    along("cone", (0.36, -0.2, 0.55), (0.36, -0.2, 0.7), 0.012, 0.0, "fuse", "weapon")
+    sphere((0.36, -0.2, 0.52), (0.085, 0.085, 0.075), "tomato", "weapon")
+    for k in range(5):
+        a = k * 2 * math.pi / 5
+        sphere((0.36 + 0.035 * math.cos(a), -0.2 + 0.035 * math.sin(a), 0.6), (0.028, 0.012, 0.006), "leaf", "weapon", rot=(0, 0, math.degrees(a)))
+    along("cyl", (0.36, -0.2, 0.59), (0.37, -0.2, 0.63), 0.008, 0.006, "leaf", "weapon", 0)
     throw_prop_bone(G, 0.12)
 
 if VARIANT == "giant":
@@ -983,7 +1001,7 @@ elif VARIANT == "bomber":
         (21, {"weapon": {"s": (1, 1, 1)}}),
         (24, {}),
     ]
-elif VARIANT in ("chef", "kite", "prop", "plane", "cat_chili", "cat_bomb"):
+elif VARIANT in ("chef", "kite", "plane", "cat_chili", "cat_bomb"):
     hide = VARIANT != "chef"
     pour = {"r": (70, 0, 0)} if VARIANT == "chef" else {"s": (0.01, 0.01, 0.01)}
     poses = [
@@ -1039,6 +1057,16 @@ elif VARIANT in ("armor", "cat_pan", "ricecooker"):
         (11, {"body": {"r": (6, 0, 0), "s": (0.92, 0.92, 1.25)}, "head": {"r": (8, 0, 0)}, "jaw": {"r": (35, 0, 0)}, "root": {"l": (0, -0.16, 0)}, "wing.L": {"r": (0, 0, 35)}, "wing.R": {"r": (0, 0, -35)}, "leg.L": {"r": (35, 0, 0)}, "leg.R": {"r": (-25, 0, 0)}, "tail": {"r": (-30, 0, 0)}}),
         (13, {"body": {"r": (2, 0, 0), "s": (1.15, 0.88, 0.85)}, "head": {"r": (-12, 0, 0)}, "jaw": {"r": (20, 0, 0)}, "root": {"l": (0, -0.14, 0)}}),
         (16, {"body": {"r": (-4, 0, 0), "s": (0.96, 1.06, 1.0)}, "root": {"l": (0, -0.06, 0)}}),
+        (22, {}),
+    ]
+elif VARIANT == "prop":   # hanging head-down: wind the tomato up, then hurl it down at the target; a new one appears
+    poses = [
+        (1, {}),
+        (6, {"wing.L": {"r": (-80, 0, 0)}, "body": {"r": (-12, 0, 0), "s": (1.06, 0.92, 1.06)}, "head": {"r": (-14, 0, 0)}, "jaw": {"r": (10, 0, 0)}, "fan": {"r": (6, 0, 0)}}),
+        (10, {"wing.L": {"r": (50, 0, 0)}, "body": {"r": (30, 0, 0), "s": (0.9, 1.12, 0.9)}, "head": {"r": (24, 0, 0)}, "jaw": {"r": (32, 0, 0)}, "fan": {"r": (-8, 0, 0)}, "leg.L": {"r": (-40, 0, 0)}, "leg.R": {"r": (30, 0, 0)}}),
+        (11, {"wing.L": {"r": (55, 0, 0)}, "weapon": {"s": (0.01, 0.01, 0.01)}, "body": {"r": (28, 0, 0)}, "head": {"r": (20, 0, 0)}, "jaw": {"r": (30, 0, 0)}}),
+        (16, {"weapon": {"s": (0.01, 0.01, 0.01)}, "body": {"r": (6, 0, 0), "s": (1.04, 0.97, 1.04)}}),
+        (19, {"weapon": {"s": (1, 1, 1)}}),
         (22, {}),
     ]
 elif VARIANT == "balloon":
@@ -1130,6 +1158,24 @@ if VARIANT == "balloon":
     new_action("Walk")
     for f in range(0, 25, 2): struggle(f + 1, 2 * math.pi * f / 24, 10)
 
+if VARIANT == "prop":
+    # dangling under the fan: legs paddle, wings flap, head looks round; the duck swings a little on the rod
+    for nm in ("Idle", "Walk"):
+        bpy.data.actions.remove(bpy.data.actions[nm])
+    def dangle(f, ph, lean):
+        flap = math.sin(ph * 3 + 0.6); kick = math.sin(ph * 2 + 0.9); sw = math.sin(ph + 0.5)
+        full(f, {"root": {"l": (0, 0, 0.04 * math.sin(ph * 2)), "r": (lean + 4 * math.sin(ph * 2), 6 * sw, 0)},
+                 "fan": {"r": (-lean * 0.8 - 3 * math.sin(ph * 2), -6 * sw, 0)},
+                 "body": {"r": (6 * kick, 0, 10 * sw), "s": (1 + 0.04 * flap, 1 - 0.05 * flap, 1 + 0.04 * flap)},
+                 "head": {"r": (-10 + 8 * math.sin(ph * 2 + 1.3), 0, 22 * math.sin(ph + 0.5))},
+                 "jaw": {"r": (10 + 12 * abs(math.sin(ph * 2 + 1.3)), 0, 0)},
+                 "wing.L": {"r": (0, 0, -40 - 30 * flap)}, "wing.R": {"r": (0, 0, 40 + 30 * flap)},
+                 "leg.L": {"r": (35 * kick, 0, 0)}, "leg.R": {"r": (-35 * kick, 0, 0)}, "tail": {"r": (0, 0, 25 * math.sin(ph * 3 + 2))}})
+    new_action("Idle")
+    for f in range(0, 49, 2): dangle(f + 1, 2 * math.pi * f / 48, 0)
+    new_action("Walk")
+    for f in range(0, 25, 2): dangle(f + 1, 2 * math.pi * f / 24, 12)
+
 if VARIANT in FLYERS:
     for nm in ("Idle", "Walk"):
         bpy.data.actions.remove(bpy.data.actions[nm])
@@ -1186,6 +1232,19 @@ if VARIANT == "balloon":
     full(20, {"bag": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 1.25), "s": (0.01, 0.01, 0.01)}, "smoke": {"s": (0.01, 0.01, 0.01)}})
     # flip the whole rig head-down and lift it so the bag floats above
     arm.rotation_euler = (0, math.pi, 0); arm.location = (0, 0, 1.75)
+    bpy.context.view_layer.update()
+
+if VARIANT == "prop":
+    # Death: the fan tears off and whirls away, the duck drops (local +z is down once flipped) and poofs into smoke
+    bpy.data.actions.remove(bpy.data.actions["Death"]); new_action("Death")
+    full(1, {})
+    full(3, {"fan": {"l": (0, 0, -0.1)}, "body": {"s": (0.85, 1.2, 0.85)}, "jaw": {"r": (35, 0, 0)}, "wing.L": {"r": (0, 0, -60)}, "wing.R": {"r": (0, 0, 60)}})
+    full(5, {"fan": {"l": (0, 0, -0.6), "s": (0.5, 0.5, 0.5)}, "body": {"s": (0.9, 1.15, 0.9)}, "jaw": {"r": (35, 0, 0)}, "root": {"l": (0, 0, 0.2)}, "wing.L": {"r": (0, 0, -80)}, "wing.R": {"r": (0, 0, 80)}})
+    full(9, {"fan": {"s": (0.01, 0.01, 0.01)}, "body": {"s": (1.15, 0.85, 1.15)}, "root": {"l": (0, 0, 0.95)}, "wing.L": {"r": (0, 0, -70)}, "wing.R": {"r": (0, 0, 70)}})
+    full(12, {"fan": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 0.92)}, "smoke": {"s": (0.6, 0.6, 0.6)}})
+    full(16, {"fan": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 0.95), "s": (0.4, 0.4, 0.4)}, "smoke": {"s": (1.2, 1.2, 1.25)}})
+    full(20, {"fan": {"s": (0.01, 0.01, 0.01)}, "root": {"l": (0, 0, 0.95), "s": (0.01, 0.01, 0.01)}, "smoke": {"s": (0.01, 0.01, 0.01)}})
+    arm.rotation_euler = (0, math.pi, 0); arm.location = (0, 0, 1.25 * SC)
     bpy.context.view_layer.update()
 
 # ---------- export GLB ----------

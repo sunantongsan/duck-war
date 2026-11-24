@@ -161,7 +161,7 @@ print('walls', len(ART['walls']))
 TROOPS = {'fork': 'fork', 'sling': 'sling', 'giant': 'giant', 'nurse': 'nurse', 'digger': 'digger', 'pot': 'armor', 'chef': 'chef', 'pig': 'pig_rider',
           'bomber': 'bomber', 'witch': 'witch', 'dog': 'dog', 'egret': 'egret', 'cat_spatula': 'cat_spatula', 'cat_pan': 'cat_pan', 'cat_chili': 'cat_chili', 'cat_bomb': 'cat_bomb', 'cat_king': 'cat_king', 'colonel': 'colonel_big', 'balloon': 'balloon', 'plane': 'plane',
           'thief': 'thief', 'bomber': 'bomber', 'mop': 'mop', 'witch': 'witch', 'egret': 'egret', 'prop': 'prop', 'kite': 'kite', 'fan': 'fan'}
-BIG = {'colonel': 1.5, 'balloon': 1.5, 'kite': 1.5, 'fan': 1.5}   # heroes are drawn much bigger, so they get bigger cells
+BIG = {'colonel': 1.5, 'balloon': 1.5, 'kite': 1.5, 'fan': 1.5, 'prop': 1.5}   # heroes are drawn much bigger, so they get bigger cells
 CW, CH = 180, 192
 def outline(im):
     a = im.split()[3].point(lambda v: 255 if v > 90 else 0).filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(.5))
@@ -201,7 +201,7 @@ for r, f in [('honey', 'res_Y_honey.png'), ('veggie', 'res_G_veggie.png'), ('syr
 coin = os.path.join(ROOT, 'tools', 'art', 'coin.png')
 if os.path.exists(coin): im = Image.open(coin).convert('RGBA'); im.thumbnail((96, 96), Image.LANCZOS); im.save(os.path.join(OUT, 'ic_coin.webp'), 'WEBP', quality=90)
 for key, src in [('fork', 'fork'), ('sling', 'sling'), ('giant', 'giant'), ('digger', 'digger'), ('pot', 'armor'), ('nurse', 'nurse'), ('chef', 'chef'), ('pig', 'pig_rider'), ('dog', 'dog'), ('balloon', '@balloon'), ('plane', 'plane'),
-                 ('thief', 'thief'), ('bomber', 'bomber'), ('mop', 'mop'), ('witch', 'witch'), ('egret', 'egret'), ('prop', 'prop'), ('kite', 'kite'), ('fan', 'fan')]:
+                 ('thief', 'thief'), ('bomber', 'bomber'), ('mop', 'mop'), ('witch', 'witch'), ('egret', 'egret'), ('prop', '@prop'), ('kite', 'kite'), ('fan', 'fan')]:
     p = os.path.join(ATL, src[1:], 'd1_c00.png') if src.startswith('@') else os.path.join(LIB, f'u_{src}.png')   # @ = take the portrait from the new atlas
     if not os.path.exists(p): continue
     im = Image.open(p).convert('RGBA'); im = im.crop(im.getbbox()); im.thumbnail((128, 128), Image.LANCZOS); im.save(os.path.join(OUT, f'p_{key}.webp'), 'WEBP', quality=88)

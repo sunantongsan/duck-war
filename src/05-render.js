@@ -520,10 +520,10 @@ function drawTroop(t) {
 // ---------- attack styles: which baked frames to use (the shared atlas attack bows forward, which reads as a peck,
 // so only birds and the dog keep that frame) and how the body moves. Frames: 0 ready, 1 wind-up, 2 forward bow, 3 recover, -1 idle.
 var ATK_KIND = { egret: 'peck', h_queen: 'shoot', dog: 'bite', h_king: 'bite', mop: 'spin', pig: 'stomp', chef: 'throw', witch: 'magic', nurse: 'heal',
-  plane: 'dive', kite: 'swoop', prop: 'hover', fan: 'blow', fanlet: 'blow', balloon: 'flail', bomber: 'blast', duckling: 'stab' };
+  plane: 'dive', kite: 'swoop', prop: 'hurl', fan: 'blow', fanlet: 'blow', balloon: 'flail', bomber: 'blast', duckling: 'stab' };
 var ATK_HIT = { stab: 'stab', shot: 'shoot', smash: 'smash', bite: 'bite', fire: 'throw', magic: 'magic', heal: 'heal', spin: 'spin', blast: 'blast', cracker: 'flail' };
 var ATK_FRAMES = { stab: [1, 0, 1, 0], shoot: [1, 1, 0, 0], smash: [1, 1, 3, 3], stomp: [1, 1, 3, 3], throw: [1, 1, 0, 0], magic: [1, 1, 1, 0], heal: [1, 0, 0, 0],
-  spin: [-1], peck: [0, 1, 1, 0], bite: [0, 2, 2, 3], dive: [-1], swoop: [-1], hover: [-1], blow: [-1], flail: [-1], blast: [1, 1, 3, 3], classic: [0, 1, 2, 3] };
+  spin: [-1], peck: [0, 1, 1, 0], bite: [0, 2, 2, 3], dive: [-1], swoop: [-1], hover: [-1], blow: [-1], flail: [-1], hurl: [0, 1, 2, 3], blast: [1, 1, 3, 3], classic: [0, 1, 2, 3] };
 function atkStyle(t, u) { var k = t.side === 'hero' ? 'classic' : t.side === 'cat' ? 'smash' : ATK_KIND[t.kind] || ATK_HIT[u.hit] || 'stab'; return { pose: k, frames: ATK_FRAMES[k] }; }
 function bell(q, a, b) { return q < a || q > b ? 0 : Math.sin((q - a) / (b - a) * Math.PI); }
 function streak(c, x, y, fx, fy, len, w, col, a) { c.strokeStyle = col; c.globalAlpha = a; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + fx * len, y + fy * len); c.stroke(); c.globalAlpha = 1; }
@@ -558,6 +558,7 @@ var ATK_POSE = {
   hover: function (q) { var d = Math.sin(q * Math.PI); return { rot: .22 * d, f: .15 * d, jx: Math.sin(q * 70) * .03 }; },   // propeller duck tilts in to fire
   blow: function (q) { return { jx: Math.sin(q * 90) * .04, sx: 1 + .06 * Math.sin(q * 40), sy: 1 - .04 * Math.sin(q * 40),   // the fan shudders and blows
     over: function (c, x, y, fx, fy, q, u) { for (var i = -1; i <= 1; i++) streak(c, x + fx * cam.s * (.3 + q * .6) - fy * i * cam.s * .2, y - u.h * cam.s * .4 + fx * i * cam.s * .1, fx, fy, cam.s * .35, 2, '#e8f6ff', .8 * (1 - q)); } }; },
+  hurl: function (q) { var b = q < .4 ? q / .4 : 0, h = bell(q, .4, .8); return { rot: -.12 * b + .2 * h, f: .12 * h, lift: .1 * b - .15 * h, jx: Math.sin(q * 60) * .015 }; },
   flail: function (q) { return { rot: Math.sin(q * 30) * .2, jx: Math.sin(q * 23) * .03, lift: .15 * Math.sin(q * Math.PI) }; },   // dangling balloon duck kicks about as it drops the cracker
   blast: function (q) { var w = Math.sin(q * 50) * .5 + .5; return { sx: 1 + .2 * q + .06 * w, sy: 1 + .15 * q - .06 * w }; }
 };
@@ -608,7 +609,7 @@ function drawCrown(x, y, s, kind) { // gold crown that sits on the king's and qu
   ctx.restore();
 }
 // ---------- shots and effects ----------
-var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4] };
+var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4], tomato: ['#e8231a', 6] };
 function drawShot(s) {
   var p = toScreen(s.x, s.y, s.z), g = toScreen(s.x, s.y), st = SHOT[s.kind] || SHOT.pebble, r = st[1] * cam.s / 40;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y, r, r * .5, 0, 0, 7); ctx.fill();
@@ -616,6 +617,8 @@ function drawShot(s) {
   if (s.kind === 'cracker') { ctx.fillStyle = '#ffd23f'; ctx.fillRect(p.x - r * .5, p.y - r * 1.6, r, r * .6); ctx.fillStyle = 'rgba(255,220,120,' + (.5 + Math.random() * .5) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y - r * 2, r * .5, 0, 7); ctx.fill(); }   // lit fuse
   if (s.kind === 'feather') { var ang = Math.atan2((s.ty - s.fy) * ISO, s.tx - s.fx); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.ellipse(0, 0, r * 2.4, r * .7, 0, 0, 7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r * 2.4, 0); ctx.lineTo(r * 2.4, 0); ctx.stroke(); ctx.restore(); }
+  if (s.kind === 'tomato') { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(p.x - r * .35, p.y - r * .35, r * .3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#2f8a22'; for (var i = 0; i < 5; i++) { var a = i * 1.257; ctx.beginPath(); ctx.ellipse(p.x + Math.cos(a) * r * .35, p.y - r * .85 + Math.sin(a) * r * .2, r * .35, r * .14, a, 0, 7); ctx.fill(); } }
   if (s.kind === 'water') { ctx.fillStyle = 'rgba(160,230,255,.5)'; ctx.beginPath(); ctx.arc(p.x - r * .3, p.y - r * .3, r * .45, 0, 7); ctx.fill(); }
 }
 function drawFx(f, dt) {
@@ -627,6 +630,13 @@ function drawFx(f, dt) {
   if (f.t === 'puff') { if (!f.done) { f.done = 1; emitSmoke(f.x, f.y, .1, 'dust', .55, f.small ? 2 : 5); } return false; }
   if (f.t === 'hit') { ctx.strokeStyle = f.kind === 'smash' ? 'rgba(255,240,150,' + (1 - q) + ')' : 'rgba(255,255,255,' + (1 - q) + ')'; ctx.lineWidth = 3 * s;
     ctx.beginPath(); for (var j = 0; j < 5; j++) { var b = j * 1.26 + q; ctx.moveTo(c.x + Math.cos(b) * 6 * s, c.y - 14 * s + Math.sin(b) * 4 * s); ctx.lineTo(c.x + Math.cos(b) * (10 + q * 14) * s, c.y - 14 * s + Math.sin(b) * (6 + q * 9) * s); } ctx.stroke(); return true; }
+  if (f.t === 'splat' && f.kind === 'tomato') {
+    var R0 = (f.size || 1) * cam.s, a1 = 1 - q;
+    ctx.fillStyle = 'rgba(205,20,15,' + (.55 * a1) + ')'; ctx.beginPath(); ctx.ellipse(c.x, c.y, R0 * (.35 + .65 * Math.min(1, q * 3)), R0 * ISO * (.35 + .65 * Math.min(1, q * 3)), 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(235,40,30,' + (.9 * a1) + ')'; ctx.lineWidth = Math.max(2, 6 * s * a1); ctx.beginPath(); ctx.ellipse(c.x, c.y, R0 * (.4 + q * .9), R0 * ISO * (.4 + q * .9), 0, 0, 7); ctx.stroke();
+    for (var j = 0; j < 9; j++) { var ang = j * .7 + (f.seed || 0), dd = R0 * (.2 + q * 1.1) * (.6 + (j % 3) * .2), hh = Math.sin(Math.min(1, q * 1.6) * Math.PI) * R0 * .5;
+      ctx.fillStyle = j % 3 ? 'rgba(220,25,20,' + a1 + ')' : 'rgba(255,220,120,' + a1 + ')'; ctx.beginPath(); ctx.arc(c.x + Math.cos(ang) * dd, c.y + Math.sin(ang) * dd * ISO - hh, (j % 3 ? 3.2 : 2) * s + 1, 0, 7); ctx.fill(); }
+    return true; }
   if (f.t === 'splat') { ctx.fillStyle = f.kind === 'egg' ? 'rgba(255,214,80,' + (.7 * (1 - q)) + ')' : f.kind === 'chili' ? 'rgba(255,90,30,' + (.7 * (1 - q)) + ')' : 'rgba(130,210,255,' + (.6 * (1 - q)) + ')';
     ctx.beginPath(); ctx.ellipse(c.x, c.y, (f.size || 1) * cam.s * .7 * (.5 + q), (f.size || 1) * cam.s * .35 * (.5 + q), 0, 0, 7); ctx.fill(); return true; }
   if (f.t === 'heal') { ctx.fillStyle = 'rgba(110,230,120,' + (1 - q) + ')'; ctx.font = 'bold ' + (16 * s | 0) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+', c.x, c.y - 30 * s - q * 20 * s); return true; }

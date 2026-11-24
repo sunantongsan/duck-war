@@ -274,6 +274,7 @@ function attack(t, target, u) {
   if (u.shot === 'feather') { sfx('shot'); shoot(t, target, 'feather', dmg, 0, 11, t.x, t.y, 1.4); return; }
   if (u.hit === 'blast') { blast(t, u, dmg); return; }
   if (u.hit === 'magic') { sfx('heal'); shoot(t, target, 'magic', dmg, 0, 8, t.x, t.y, .9); return; }
+  if (u.hit === 'tomato') { sfx('shot'); shoot(t, target, 'tomato', dmg, u.splash, 6, t.x, t.y, -.2); return; }   // dropped from under the fan
   if (u.hit === 'cracker') { sfx('shot'); shoot(t, target, 'cracker', dmg, u.splash, 5, t.x, t.y, 1.9); return; }
   if (u.hit === 'shot' || u.hit === 'fire') { sfx(u.hit === 'fire' ? 'fire' : 'shot'); shoot(t, target, u.hit === 'fire' ? 'chili' : 'pebble', dmg, u.splash, 9, t.x, t.y, .7); return; }
   t.pend = { target: target, dmg: dmg, left: .23, kind: u.hit }; if (t.side === 'cat') sfx('hiss');   // the blow lands when the swing does
@@ -308,7 +309,7 @@ function shotTick(s, dt) {
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
-    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: .5, max: .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
+    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
   else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }
