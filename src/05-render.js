@@ -315,9 +315,46 @@ function drawTurret(b, c, dead) {
   ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w[0], w[1]); if (b.lv === 0) ctx.globalAlpha = .55;
   if (dead) { cell(17, 0, 0); ctx.restore(); return; }
   cell(16, 0, 0);
+  if (st.band) { slingHead(b, st, dir, k, cell); ctx.restore(); return; }
   var ax = Math.cos(b.aim || 0) - Math.sin(b.aim || 0), ay = (Math.cos(b.aim || 0) + Math.sin(b.aim || 0)) * ISO;
   cell(dir, -ax * rec * 4, -ay * rec * 4);
   ctx.restore();
+}
+// Giant slingshot: the frame stays put; the rubber band is drawn live. While reloading the duck stretches it back
+// (band thins as it stretches), on firing it snaps forward past the fork, wobbles and settles; the stone leaves the pouch.
+// At home the duck practises: a slow pull, a trembling hold, a dry snap.
+function slingPull(b, rate) {
+  var raid = screen === 'raid' && R, T = raid ? (R.now || now()) : now(), e, f, loaded = true;
+  function spring(t) { return Math.exp(-t * 7) * Math.cos(t * 24); }
+  if (raid) {
+    if (!b.fire) return { f: 0, loaded: true, e: 9 };
+    e = (T - b.fire) / 1000;
+    if (e < .45) { f = spring(e); loaded = false; }
+    else { var c = clamp((e - .45) / Math.max(.2, rate - .55), 0, 1); f = 1 - (1 - c) * (1 - c); }
+    return { f: f, loaded: loaded, e: e };
+  }
+  var t = ((T / 1000) + (b.id || 0) * 1.37) % 6;
+  if (t < 1.3) f = .85 * (1 - Math.pow(1 - t / 1.3, 2));
+  else if (t < 1.9) f = .85 + Math.sin(t * 60) * .015;
+  else { f = .85 * spring(t - 1.9); }
+  return { f: f, loaded: false, e: t < 1.9 ? 9 : t - 1.9 };
+}
+function slingHead(b, st, dir, k, cell) {
+  var B0 = st.band, D = B0.dirs[dir], s = stageOf(Math.max(1, b.lv)), p = slingPull(b, B[b.k].rate);
+  var tw = p.e < .3 ? Math.sin(p.e * 70) * (1 - p.e / .3) * 1.6 : 0;   // the fork twangs right after a release
+  cell(dir, tw, 0);
+  var f = p.f, px = (D.R[0] + (D.P[0] - D.R[0]) * f) * k - st.ax * k, py = (D.R[1] + (D.P[1] - D.R[1]) * f) * k - st.ay * k;
+  var w = Math.max(1.1, B0.bw * k * (1 - .35 * Math.max(0, f)));
+  var col = s >= 4 ? '#8e1010' : '#d2401c', dark = s >= 4 ? '#3a0505' : '#6e1a08';
+  ctx.lineCap = 'round';
+  D.tips.forEach(function (t) { var tx = t[0] * k - st.ax * k + tw, ty = t[1] * k - st.ay * k;
+    ctx.strokeStyle = dark; ctx.lineWidth = w + 1.2; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.stroke(); });
+  var pr = B0.pw * k * .55;
+  ctx.fillStyle = '#4a2810'; ctx.beginPath(); ctx.ellipse(px, py, pr * 1.25, pr * .85, 0, 0, 7); ctx.fill();
+  if (p.loaded) { var rr = pr * .75; ctx.fillStyle = s === 5 ? '#ff7a1a' : s === 4 ? '#2a2a30' : '#8f8b84'; ctx.beginPath(); ctx.arc(px, py - rr * .35, rr, 0, 7); ctx.fill();
+    ctx.fillStyle = s === 5 ? 'rgba(255,230,120,.9)' : 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(px - rr * .3, py - rr * .7, rr * .35, 0, 7); ctx.fill(); }
+  if (screen !== 'raid' || (p.f > .02 && p.f < .99) || p.e < .45) dirty = true;   // keep animating while the band moves
 }
 var WALLSET = null;   // live wall tiles of the scene being drawn, rebuilt each frame (was a scan of every building per wall)
 function buildWallSet(list) { var set = new Set(); for (var i = 0; i < list.length; i++) { var o = list[i]; if (o.k === 'wall' && !o.dead) set.add(o.x * 1000 + o.y); } WALLSET = { list: list, set: set }; }

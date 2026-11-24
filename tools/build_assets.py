@@ -58,6 +58,7 @@ STATIC = {'hq': 'hq', 'barracks': 'barracks', 'workshop': 'redbarn', 'honeypump'
 # ONLY=veggieblender,cat_king,... rebuilds just those keys and keeps everything else from the current art.json
 ONLY = set(filter(None, os.environ.get('ONLY', '').split(',')))
 PREV = json.load(open(os.path.join(ROOT, 'web', 'data', 'art.json'))) if ONLY else None
+if ONLY: ART.update({k: v for k, v in PREV.items() if k not in ART})   # e.g. troopLayout
 def keep(section, key):
     if ONLY and key not in ONLY and key in PREV.get(section, {}): ART[section][key] = PREV[section][key]; return True
     return False
@@ -122,7 +123,7 @@ for key, src in TURRETS.items():
         sheet = Image.new('RGBA', (CELL * 6, CELL * 3)); tips = []
         for dgame in range(16):
             hi = PICK[dgame]
-            c, offx, offy = cell(heads[hi])
+            c, offx, offy = cell(heads[hi]); offh = (offx, offy)
             sheet.alpha_composite(paint_materials(c, key, n), ((dgame % 6) * CELL, (dgame // 6) * CELL))
             _, sx, sy = head_angle(hi); pts = np.argwhere(np.array(heads[hi].split()[3]) > 200)
             if len(pts):
@@ -132,8 +133,14 @@ for key, src in TURRETS.items():
         c, offx, offy = cell(base)
         sheet.alpha_composite(paint_materials(c, key, n, turret_base=True), (4 * CELL, 2 * CELL))
         c2, _, _ = cell(rub); sheet.alpha_composite(c2, (5 * CELL, 2 * CELL))
+        band = None
+        if os.path.exists(os.path.join(d, 'band.json')):
+            bj = json.load(open(os.path.join(d, 'band.json'))); sres = heads[0].size[0] - 2 * pad_px
+            to = lambda q: [round((q[0] * sres / bj['res'] + pad_px - x0) * sc + offh[0], 1), round((q[1] * sres / bj['res'] + pad_px - y0) * sc + offh[1], 1)]
+            band = {'dirs': [{'tips': [to(t) for t in bj['dirs'][PICK[g]]['tips']], 'P': to(bj['dirs'][PICK[g]]['P']), 'R': to(bj['dirs'][PICK[g]]['R'])} for g in range(16)],
+                    'bw': round(bj['bw'] * sres / bj['res'] * sc, 2), 'pw': round(bj['pw'] * sres / bj['res'] * sc, 2)}
         name = f't_{key}_{n}'; sheet.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
-        stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips, 'fit': round(sfit, 3)})
+        stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips, 'fit': round(sfit, 3), **({'band': band} if band else {})})
     ART['turrets'][key] = {'stages': stages, 'fit': round(tfit, 3)}
     print('turret', key)
 
@@ -184,6 +191,7 @@ for key, src in TROOPS.items():
     print('troop', key)
 ART['troopLayout'] = {'cw': CW, 'ch': CH, 'dirs': 8, 'idle': [0, 4], 'walk': [4, 8], 'attack': [12, 4], 'death': [16, 5]}
 json.dump(ART, open(os.path.join(ROOT, 'web', 'data', 'art.json'), 'w'), separators=(',', ':'))
+if ONLY: sys.exit(0)
 print('art.json written')
 
 # ---------- UI: resource icons, troop portraits, welcome art ----------
