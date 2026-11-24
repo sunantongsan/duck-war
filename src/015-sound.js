@@ -166,10 +166,9 @@ function sfx(name) {
   if (Q.length >= 9 && !SFX_MUST[name]) return; Q.push(t); SND.last[name] = t;
   try { if (!(REAL[name] && REAL[name]())) SFX[name](); } catch (e) {}
 }
-// SOUND CREDITS (also shown in the sound settings):
+// SOUND CREDITS (shown in-game: ⚙ menu → อื่นๆ → เครดิต):
 //   "Oculus Audio Pack 01" by Oculus VR, LLC (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/), CC BY 4.0 — via facebookincubator/Meta-open-sound; clips trimmed, pitched and re-encoded.
 //   Kenney Sci-Fi sounds (kenney.nl), CC0 — via ignition-bench/sound-library.  wyzowl/sfx-kit, CC0.
-var SOUND_CREDIT = 'เสียงประกอบบางส่วน: "Oculus Audio Pack 01" โดย Oculus VR, LLC (CC BY 4.0) · Kenney (CC0) · sfx-kit (CC0)';
 function setSound(on) { SND.on = on; if (SND.sfxBus) SND.sfxBus.gain.value = on ? 1 : 0; soundSave(); }
 function setMusic(on) { SND.music = on; if (SND.musicBus) SND.musicBus.gain.setTargetAtTime(on ? .32 : 0, SND.ctx.currentTime, .2); soundSave(); if (on) startMusic(); }
 

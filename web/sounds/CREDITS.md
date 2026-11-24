@@ -9,4 +9,4 @@ Trimmed, pitched and re-encoded (mono, Ogg Vorbis) from:
 - blast1-3, lowboom, fire: Kenney Sci-Fi Sounds (kenney.nl), CC0. Source: github.com/ignition-bench/sound-library.
 - splash, thump1-2: wyzowl/sfx-kit, CC0.
 
-The game shows the CC BY credit in the sound settings window. Put the same credit line in the store listing description.
+The game shows the credits in its menu: ⚙ → อื่นๆ → เครดิต. Put the same credit line in the store listing description.

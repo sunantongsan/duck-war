@@ -83,7 +83,7 @@ function boot() {
   $('btn-build').onclick = buildMenu; $('btn-army').onclick = armyMenu; $('btn-attack').onclick = attackMenu;
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };
-  $('btn-sound').onclick = soundMenu; $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
+  $('btn-sound').onclick = soundMenu;
   window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing) cancelPlace(); else if (moving) cancelMove(); else if (selected) selectBuilding(null); };
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });

@@ -263,10 +263,9 @@ function sfx(name) {
   if (Q.length >= 9 && !SFX_MUST[name]) return; Q.push(t); SND.last[name] = t;
   try { if (!(REAL[name] && REAL[name]())) SFX[name](); } catch (e) {}
 }
-// SOUND CREDITS (also shown in the sound settings):
+// SOUND CREDITS (shown in-game: ⚙ menu → อื่นๆ → เครดิต):
 //   "Oculus Audio Pack 01" by Oculus VR, LLC (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/), CC BY 4.0 — via facebookincubator/Meta-open-sound; clips trimmed, pitched and re-encoded.
 //   Kenney Sci-Fi sounds (kenney.nl), CC0 — via ignition-bench/sound-library.  wyzowl/sfx-kit, CC0.
-var SOUND_CREDIT = 'เสียงประกอบบางส่วน: "Oculus Audio Pack 01" โดย Oculus VR, LLC (CC BY 4.0) · Kenney (CC0) · sfx-kit (CC0)';
 function setSound(on) { SND.on = on; if (SND.sfxBus) SND.sfxBus.gain.value = on ? 1 : 0; soundSave(); }
 function setMusic(on) { SND.music = on; if (SND.musicBus) SND.musicBus.gain.setTargetAtTime(on ? .32 : 0, SND.ctx.currentTime, .2); soundSave(); if (on) startMusic(); }
 
@@ -1894,22 +1893,52 @@ function showResult() {
 }
 function goHome() { clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
 
-// ---------- sound settings ----------
+// ---------- game menu (⚙ top right): sound, map look, and "อื่นๆ" -> credits, about ----------
 function soundMenu() {
-  openSheet('เสียง', function (body) {
+  openSheet('เมนู', function (body) {
     var row = h('div', 'p-row sound-row');
     var a = h('button', 'btn ' + (SND.on ? 'green' : ''), (SND.on ? '🔊' : '🔇') + ' เสียงเอฟเฟกต์ ' + (SND.on ? 'เปิด' : 'ปิด')); a.onclick = function () { setSound(!SND.on); soundMenu(); sfx('quack'); };
     var m = h('button', 'btn ' + (SND.music ? 'green' : ''), '🎵 เพลง ' + (SND.music ? 'เปิด' : 'ปิด')); m.onclick = function () { setMusic(!SND.music); soundMenu(); };
     row.appendChild(a); row.appendChild(m); body.appendChild(row);
-    var gr = h('div', 'p-row sound-row'), gb = h('button', 'btn', '🌳 พื้นแผนที่: ' + GROUNDS[D.ground || 0].name); gb.onclick = function () { groundPicker(false); }; gr.appendChild(gb); body.appendChild(gr);
-    body.appendChild(h('div', 'snd-credit', SOUND_CREDIT));
+    var gr = h('div', 'p-row sound-row'), gb = h('button', 'btn', '🌳 พื้นแผนที่: ' + GROUNDS[D.ground || 0].name); gb.onclick = function () { groundPicker(false); }; gr.appendChild(gb);
+    var ob = h('button', 'btn', '📋 อื่นๆ'); ob.onclick = otherMenu; gr.appendChild(ob); body.appendChild(gr);
   });
-  $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
+}
+function backRow(body, to) { var r = h('div', 'p-row sound-row'), bk = h('button', 'btn', '‹ กลับ'); bk.onclick = to; r.appendChild(bk); body.appendChild(r); }
+function otherMenu() {
+  openSheet('อื่นๆ', function (body) {
+    var row = h('div', 'p-row sound-row');
+    var c = h('button', 'btn', '⭐ เครดิต'); c.onclick = creditsMenu; row.appendChild(c);
+    var ab = h('button', 'btn', 'ℹ️ เกี่ยวกับเกม'); ab.onclick = aboutMenu; row.appendChild(ab);
+    body.appendChild(row); backRow(body, soundMenu);
+  });
+}
+var CREDITS = [
+  ['เกม', ['Duck War สงคราม เป็ด เป็ด · พัฒนาโดย Cockro Network']],
+  ['เสียงประกอบ', ['"Oculus Audio Pack 01" by Oculus VR, LLC — CC BY 4.0 (creativecommons.org/licenses/by/4.0) · เสียงเป็ด หมา หมู ไก่ หัวเราะ ต่อย กระทะ ลมวืด ยางดีด ไม้ถล่ม (ตัด ปรับระดับเสียง และแปลงไฟล์)',
+                   'Kenney Sci-Fi Sounds (kenney.nl) — CC0 · ระเบิดและไฟ  ·  sfx-kit by Wyzowl — CC0 · น้ำและแรงกระแทก', 'เพลงและเสียงอื่นๆ สังเคราะห์ในเกม']]
+];
+function creditsMenu() {
+  openSheet('เครดิต', function (body) {
+    var box = h('div', 'credits');
+    CREDITS.forEach(function (sec) { box.appendChild(h('div', 'cr-h', sec[0])); sec[1].forEach(function (line) { box.appendChild(h('div', 'cr-l', line.replace(/&/g, '&amp;').replace(/</g, '&lt;'))); }); });
+    body.appendChild(box); backRow(body, otherMenu);
+  });
+}
+function aboutMenu() {
+  var info = window.DuckContent || {};
+  openSheet('เกี่ยวกับเกม', function (body) {
+    var box = h('div', 'credits');
+    box.appendChild(h('div', 'cr-h', 'Duck War สงคราม เป็ด เป็ด'));
+    box.appendChild(h('div', 'cr-l', 'เวอร์ชัน ' + (info.label || '-') + (info.contentVersion ? ' (แพตช์ ' + info.contentVersion + ')' : '') + (info.channel === 'test' ? ' · รุ่นทดสอบ' : '')));
+    box.appendChild(h('div', 'cr-l', 'กองทัพเป็ดบุกฐานแมว สร้างฐาน ฝึกเป็ด แล้วออกไปบุก!'));
+    body.appendChild(box); backRow(body, otherMenu);
+  });
 }
 // ---------- map look: chosen on first start (and changeable later from the settings button) ----------
 function groundPicker(first) {
   openSheet(first ? 'เลือกพื้นแผนที่ของฐานเป็ด' : 'เปลี่ยนพื้นแผนที่', function (body) {
-    if (first) body.appendChild(h('div', 'gp-note', 'เลือกได้ 1 แบบ เปลี่ยนทีหลังได้ที่ปุ่ม 🔊'));
+    if (first) body.appendChild(h('div', 'gp-note', 'เลือกได้ 1 แบบ เปลี่ยนทีหลังได้ที่ปุ่ม ⚙️'));
     var grid = h('div', 'gp-grid');
     GROUNDS.forEach(function (T, i) {
       var card = h('div', 'card gp-card' + ((D.ground || 0) === i && !first ? ' on' : ''));
@@ -2075,7 +2104,7 @@ function boot() {
   $('btn-build').onclick = buildMenu; $('btn-army').onclick = armyMenu; $('btn-attack').onclick = attackMenu;
   $('btn-ok').onclick = confirmPlace; $('btn-no').onclick = cancelPlace;
   $('btn-end').onclick = function () { if (R && !R.over) endRaid(); };
-  $('btn-sound').onclick = soundMenu; $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
+  $('btn-sound').onclick = soundMenu;
   window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing) cancelPlace(); else if (moving) cancelMove(); else if (selected) selectBuilding(null); };
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
