@@ -1,8 +1,44 @@
 // Duck War — drawing: grass field, buildings (with contact shadows baked in), turrets that turn, walls that join,
 // troops from 8-direction sheets with cartoon squash & stretch, shots and effects. Depth = x + y (back to front).
-var GRASS = null;
-function drawGround(t) {
-  var c = ctx; c.fillStyle = '#6fb84a'; c.fillRect(0, 0, view.w, view.h);
+// Keep the visible terrain and deployment overlay in one screen-sized bitmap.
+var groundCache = null;
+function drawGround() {
+  var raid = screen === 'raid' && R && !R.over && R.pick ? R : null;
+  var flash = !!(raid && raid.redFlash && now() - raid.redFlash < 700);
+  var revision = raid ? raid.groundRevision : 0;
+  if (!groundCache) groundCache = { image: document.createElement('canvas') };
+  var cache = groundCache, image = cache.image;
+  if (cache.x !== cam.x || cache.y !== cam.y || cache.scale !== cam.s ||
+      cache.w !== view.w || cache.h !== view.h || cache.dpr !== view.dpr ||
+      cache.raid !== raid || cache.revision !== revision || cache.flash !== flash) {
+    if (image.width !== canvas.width) image.width = canvas.width;
+    if (image.height !== canvas.height) image.height = canvas.height;
+    var c = image.getContext('2d');
+    c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+    paintGround(c);
+    if (raid) paintDeployZone(c, raid, flash);
+    cache.x = cam.x; cache.y = cam.y; cache.scale = cam.s;
+    cache.w = view.w; cache.h = view.h; cache.dpr = view.dpr;
+    cache.raid = raid; cache.revision = revision; cache.flash = flash;
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, 0, 0);
+  ctx.restore();
+}
+function paintDeployZone(c, raid, flash) {
+  var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
+  for (var y = 0; y < MAP; y++) for (var x = 0; x < MAP; x++) {
+    if (enc[y * MAP + x]) tileDiamond(x, y, 1, red, null, c);
+  }
+  raid.buildings.forEach(function (b) {
+    if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + b.x - 1])
+      tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null, c);
+  });
+}
+function paintGround(c) {
+  c.fillStyle = '#6fb84a'; c.fillRect(0, 0, view.w, view.h);
   var p = [toScreen(0, 0), toScreen(MAP, 0), toScreen(MAP, MAP), toScreen(0, MAP)];
   c.save(); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (var i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath();
   var g = c.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y); g.addColorStop(0, '#9fe06a'); g.addColorStop(1, '#7fcb55'); c.fillStyle = g; c.fill();
@@ -13,10 +49,11 @@ function drawGround(t) {
   c.restore();
   c.strokeStyle = 'rgba(70,120,40,.55)'; c.lineWidth = 3; c.beginPath(); c.moveTo(p[0].x, p[0].y); for (i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath(); c.stroke();
 }
-function tileDiamond(x, y, s, fill, stroke) {
+function tileDiamond(x, y, s, fill, stroke, c) {
+  c = c || ctx;
   var a = toScreen(x, y), b = toScreen(x + s, y), d = toScreen(x + s, y + s), e = toScreen(x, y + s);
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(d.x, d.y); ctx.lineTo(e.x, e.y); ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+  c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); }
 }
 function sprite(a, wx, wy, opt) {
   var im = img(a.file); if (!ready(im)) return; var p = toScreen(wx, wy), k = cam.s / a.ppu * ((opt && opt.fit) || 1);

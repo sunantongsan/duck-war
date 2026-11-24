@@ -151,7 +151,23 @@ function heroThumb(k) { // portrait for a hero card: the dog and egret have thei
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
 }
+// An ordinary drop only changes one count. Rebuild when a card disappears
+// or a hero changes state, which also refreshes the automatically selected card.
+function dropTroop(x, y) {
+  var k = R.pick;
+  if (!deploy(x, y)) return;
+  if (R.pick === k && R.pickedCount) R.pickedCount.textContent = 'x' + R.army[k];
+  else raidBar();
+}
 function raidBar() {
+  R.pickedCount = null;
+  if (R.pick) {
+    var art = ART.troops[U[R.pick].art];
+    if (art && !IMG[art.file]) {
+      var sheet = img(art.file);
+      if (typeof sheet.decode === 'function') Promise.resolve(sheet.decode()).catch(function () {});
+    }
+  }
   var bar = $('troops'); bar.innerHTML = '';
   HERO_KEYS.forEach(function (k) {
     var hs = R.heroes[k]; if (!hs) return; var u = U[k], dead = hs.unit && hs.unit.dead, st = hs.state === 'ready' ? (R.pick === k ? ' on' : '') : dead || hs.used ? ' off' : ' skill';
@@ -162,13 +178,15 @@ function raidBar() {
   Object.keys(R.army).forEach(function (k) {
     if (!(R.army[k] > 0) && R.pick !== k) return;
     var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + U[k].art + '.webp)"></span><small>' + U[k].name + '</small>');
+    if (R.pick === k) R.pickedCount = c.querySelector('.cnt');
     c.onclick = function () { if (R.army[k] > 0) { R.pick = k; raidBar(); } }; bar.appendChild(c);
   });
 }
 function raidHud() {
   if (!R) return; var s = $('raid-top');
-  s.innerHTML = '<span class="stars">' + '★★★'.slice(0, R.stars || 0) + '<em>' + '★★★'.slice(R.stars || 0) + '</em></span><b>' + Math.floor((R.pct || 0) * 100) + '%</b>' +
+  var html = '<span class="stars">' + '★★★'.slice(0, R.stars || 0) + '<em>' + '★★★'.slice(R.stars || 0) + '</em></span><b>' + Math.floor((R.pct || 0) * 100) + '%</b>' +
     '<span>⏱ ' + clock(R.time * 1000) + '</span><span>' + icon('honey') + fmt(R.taken.honey) + ' ' + icon('veggie') + fmt(R.taken.veggie) + (R.lootTotal.syrup ? ' ' + icon('syrup') + fmt(R.taken.syrup) : '') + '</span>';
+  if (html !== R.hudHtml) { s.innerHTML = html; R.hudHtml = html; }
 }
 function showResult() {
   var r = R.result; sfx(r.stars ? 'win' : 'lose'); openSheet(r.stars ? 'ชนะ!' : 'แพ้แล้ว', function (body) {

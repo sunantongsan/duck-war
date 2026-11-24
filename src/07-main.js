@@ -11,7 +11,7 @@ input.tap = function (w) {
     if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < 1.3) { // tap the colonel: he salutes and says something
       COLONEL.atk = now(); COLONEL.salutes = 1; COLONEL.wait = 2; COLONEL.face = Math.PI / 4; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; sfx('tap'); buzz('light'); } dirty = true;
-  } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
+  } else if (screen === 'raid' && R && !R.over) { dropTroop(w.x, w.y); }
 };
 input.press = function (w) {
   if (screen === 'home' && placing) { var o = placing, s = B[placing.k].size; return w.x >= o.x - .5 && w.x <= o.x + s + .5 && w.y >= o.y - .5 && w.y <= o.y + s + .5; }
@@ -32,7 +32,7 @@ function frame(t) {
   if (screen === 'home') { colonelTick(dt); homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected && !moving) selectBuilding(selected, true); writeSave(); } }
   if (screen === 'raid' && R) {
     raidTick(dt); raidHud();
-    if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; if (deploy(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4)) raidBar(); }
+    if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; dropTroop(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4); }
   }
   draw(dt);
   requestAnimationFrame(frame);
@@ -49,12 +49,6 @@ function draw(dt) {
   FDT = dt || 0; ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
   drawGround();
   var sc = scene(), list = [];
-  if (screen === 'raid' && R && !R.over && R.pick) { // red zone where ducks can't land
-    var flash = R.redFlash && now() - R.redFlash < 700;
-    var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
-    for (var ty = 0; ty < MAP; ty++) for (var tx = 0; tx < MAP; tx++) if (enc[ty * MAP + tx]) tileDiamond(tx, ty, 1, red, null);   // inside the walls
-    sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
-  }
   if (screen === 'home' && !moving) selection().forEach(function (b) { tileDiamond(b.x, b.y, B[b.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)'); });
   // a defense that is tapped, being placed or moved shows how far it reaches: faint ring on the grass (and the mortar's blind spot)
   if (screen === 'home') { var rings = []; if (placing) rings.push(placing); if (moving) moving.items.forEach(function (i) { rings.push({ k: i.b.k, x: i.x, y: i.y }); }); else if (selected) rings.push(selected);

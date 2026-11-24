@@ -479,7 +479,7 @@ function catBase(n) {
 function startRaid(n) {
   var base = catBase(n);
   R = { level: n, buildings: base.buildings.map(function (b) { var hp = bHp(b.k, b.lv); return Object.assign({}, b, { hp: hp, max: hp, cool: 0, aim: Math.PI * .75, dead: false }); }),
-        troops: [], shots: [], fx: [], time: 180, deployed: 0, over: false, result: null, taken: { honey: 0, veggie: 0, syrup: 0 }, army: Object.assign({}, D.army), pick: null };
+        routeCache: new Map(), groundRevision: 0, troops: [], shots: [], fx: [], time: 180, deployed: 0, over: false, result: null, taken: { honey: 0, veggie: 0, syrup: 0 }, army: Object.assign({}, D.army), pick: null };
   var share = { honey: 0, veggie: 0, syrup: 0 }, holders = R.buildings.filter(function (b) { var d = B[b.k]; return d.kind === 'store' || d.kind === 'make' || d.kind === 'hq'; });
   holders.forEach(function (b) { var d = B[b.k]; b.loot = {};
     ['honey', 'veggie', 'syrup'].forEach(function (r) { var w = d.kind === 'hq' ? .15 : d.store === r ? 1 : d.make === r ? .25 : 0; share[r] += w; b.loot[r] = w; }); });
@@ -547,11 +547,22 @@ function heroSkill(k) {
 
 // ---------- path finding: Dijkstra on tiles; buildings block, walls are passable but cost a lot (troops break them) ----------
 function grid() {
+  if (R.occupancy) return R.occupancy;
   var g = new Int16Array(MAP * MAP); R.buildings.forEach(function (b, i) { if (b.dead) return; var s = B[b.k].size; for (var x = b.x; x < b.x + s; x++) for (var y = b.y; y < b.y + s; y++) if (x >= 0 && y >= 0 && x < MAP && y < MAP) g[y * MAP + x] = i + 1; });
-  return g;
+  R.occupancy = g; return g;
 }
 function findPath(t, target, range) {
-  var g = grid(), sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1), N = MAP * MAP;
+  var sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1);
+  var key = (sy * MAP + sx) + ':' + target.id + ':' + range;
+  if (!R.routeCache.has(key)) {
+    if (R.routeCache.size >= 128) R.routeCache.clear();
+    R.routeCache.set(key, searchPath(sx, sy, target, range));
+  }
+  var route = R.routeCache.get(key);
+  return route && route.slice(); // troops advance independently through shared waypoints
+}
+function searchPath(sx, sy, target, range) {
+  var g = grid(), N = MAP * MAP;
   var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), hk = [], hn = [];   // binary heap of (cost, cell)
   function push(n, k) { hk.push(k); hn.push(n); var i = hk.length - 1; while (i) { var p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hn[i] = hn[p]; i = p; } hk[i] = k; hn[i] = n; }
   function pop() { var top = hn[0], lk = hk.pop(), ln = hn.pop(), L = hk.length; if (L) { var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i, mk = lk;
@@ -588,6 +599,7 @@ function damage(target, amount, from) {
   if (target.dead) return;
   if (from && U[from.kind] && U[from.kind].wallBonus && target.k === 'wall') amount *= U[from.kind].wallBonus;
   if (from && U[from.kind] && U[from.kind].resBonus && target.k && /store|make/.test(B[target.k].kind)) amount *= U[from.kind].resBonus;
+  if (target.k === 'wall') R.routeCache.clear(); // wall HP changes the cost of crossing it
   target.hp -= amount; target.hitAt = now();
   if (target.k) { // building: loot and debris
     if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { var v = target.loot[r] || 0, give = Math.min(v, v * amount / target.max * 1.0001); target.loot[r] -= give; R.taken[r] += give; });
@@ -595,7 +607,9 @@ function damage(target, amount, from) {
   }
   if (target.hp <= 0) {
     target.hp = 0; target.dead = true; target.deadAt = now();
-    if (target.k) { sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
+    if (target.k) {
+      R.occupancy = null; R.routeCache.clear(); R.groundRevision++;
+      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
     else { if (target.side === 'duck' && U[target.kind].hero) { D.heroRest = D.heroRest || {}; D.heroRest[target.kind] = now() + heroRestMs(target.lv || 1); toast('💫 ' + U[target.kind].name + ' หมดแรง ต้องพักฟื้นก่อนบุกครั้งหน้า'); if (typeof raidBar === 'function') raidBar(); }
       if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
@@ -627,7 +641,7 @@ function troopTick(t, dt) {
   if (u.burrow) return digTick(t, u, dt);
   if (u.air) return flyTick(t, u, dt);
   // fight back against a cat guard close by
-  var cat = u.hit === 'blast' ? null : alive(R.troops).filter(function (o) { return o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); })[0];
+  var cat = u.hit === 'blast' ? null : R.troops.find(function (o) { return o.side === 'cat' && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); });
   if (cat) { var cd = Math.hypot(cat.x - t.x, cat.y - t.y); t.face = Math.atan2(cat.y - t.y, cat.x - t.x);
     if (cd > u.range + .45) return step(t, cat.x, cat.y, u.speed, dt); return attack(t, cat, u); }
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); t.path = t.target ? findPath(t, t.target, u.range) : null; t.wall = null; }
@@ -753,7 +767,17 @@ function raidTick(dt) {
   R.buildings.forEach(function (b) { turretTick(b, dt); });
   R.shots = R.shots.filter(function (s) { return !shotTick(s, dt); });
   // soft separation so ducks don't stack on one spot
-  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r0 = big(a) + big(b); if (d > 0 && d < r0) { var p = (r0 - d) / 4 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
+  var live = alive(R.troops), radii = live.map(big);
+  for (var i = 0; i < live.length; i++) {
+    var a = live[i];
+    for (var j = i + 1; j < live.length; j++) {
+      var b = live[j], dx = b.x - a.x, dy = b.y - a.y;
+      var squared = dx * dx + dy * dy, radius = radii[i] + radii[j];
+      if (squared === 0 || squared >= radius * radius) continue;
+      var distance = Math.sqrt(squared), push = (radius - distance) / (4 * distance);
+      a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push;
+    }
+  }
   var pct = destruction(), hqDead = R.buildings.some(function (b) { return b.k === 'hq' && b.dead; });
   R.stars = (pct >= .5 ? 1 : 0) + (hqDead ? 1 : 0) + (pct >= 1 ? 1 : 0); R.pct = pct;
   var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; }) || HERO_KEYS.some(function (k) { return R.heroes[k] && R.heroes[k].state === 'ready'; });
@@ -774,9 +798,45 @@ function endRaid() {
 // ---- src/05-render.js ----
 // Duck War — drawing: grass field, buildings (with contact shadows baked in), turrets that turn, walls that join,
 // troops from 8-direction sheets with cartoon squash & stretch, shots and effects. Depth = x + y (back to front).
-var GRASS = null;
-function drawGround(t) {
-  var c = ctx; c.fillStyle = '#6fb84a'; c.fillRect(0, 0, view.w, view.h);
+// Keep the visible terrain and deployment overlay in one screen-sized bitmap.
+var groundCache = null;
+function drawGround() {
+  var raid = screen === 'raid' && R && !R.over && R.pick ? R : null;
+  var flash = !!(raid && raid.redFlash && now() - raid.redFlash < 700);
+  var revision = raid ? raid.groundRevision : 0;
+  if (!groundCache) groundCache = { image: document.createElement('canvas') };
+  var cache = groundCache, image = cache.image;
+  if (cache.x !== cam.x || cache.y !== cam.y || cache.scale !== cam.s ||
+      cache.w !== view.w || cache.h !== view.h || cache.dpr !== view.dpr ||
+      cache.raid !== raid || cache.revision !== revision || cache.flash !== flash) {
+    if (image.width !== canvas.width) image.width = canvas.width;
+    if (image.height !== canvas.height) image.height = canvas.height;
+    var c = image.getContext('2d');
+    c.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+    paintGround(c);
+    if (raid) paintDeployZone(c, raid, flash);
+    cache.x = cam.x; cache.y = cam.y; cache.scale = cam.s;
+    cache.w = view.w; cache.h = view.h; cache.dpr = view.dpr;
+    cache.raid = raid; cache.revision = revision; cache.flash = flash;
+  }
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, 0, 0);
+  ctx.restore();
+}
+function paintDeployZone(c, raid, flash) {
+  var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
+  for (var y = 0; y < MAP; y++) for (var x = 0; x < MAP; x++) {
+    if (enc[y * MAP + x]) tileDiamond(x, y, 1, red, null, c);
+  }
+  raid.buildings.forEach(function (b) {
+    if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + b.x - 1])
+      tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null, c);
+  });
+}
+function paintGround(c) {
+  c.fillStyle = '#6fb84a'; c.fillRect(0, 0, view.w, view.h);
   var p = [toScreen(0, 0), toScreen(MAP, 0), toScreen(MAP, MAP), toScreen(0, MAP)];
   c.save(); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (var i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath();
   var g = c.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y); g.addColorStop(0, '#9fe06a'); g.addColorStop(1, '#7fcb55'); c.fillStyle = g; c.fill();
@@ -787,10 +847,11 @@ function drawGround(t) {
   c.restore();
   c.strokeStyle = 'rgba(70,120,40,.55)'; c.lineWidth = 3; c.beginPath(); c.moveTo(p[0].x, p[0].y); for (i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath(); c.stroke();
 }
-function tileDiamond(x, y, s, fill, stroke) {
+function tileDiamond(x, y, s, fill, stroke, c) {
+  c = c || ctx;
   var a = toScreen(x, y), b = toScreen(x + s, y), d = toScreen(x + s, y + s), e = toScreen(x, y + s);
-  ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(d.x, d.y); ctx.lineTo(e.x, e.y); ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+  c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); } if (stroke) { c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); }
 }
 function sprite(a, wx, wy, opt) {
   var im = img(a.file); if (!ready(im)) return; var p = toScreen(wx, wy), k = cam.s / a.ppu * ((opt && opt.fit) || 1);
@@ -1138,7 +1199,23 @@ function heroThumb(k) { // portrait for a hero card: the dog and egret have thei
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
 }
+// An ordinary drop only changes one count. Rebuild when a card disappears
+// or a hero changes state, which also refreshes the automatically selected card.
+function dropTroop(x, y) {
+  var k = R.pick;
+  if (!deploy(x, y)) return;
+  if (R.pick === k && R.pickedCount) R.pickedCount.textContent = 'x' + R.army[k];
+  else raidBar();
+}
 function raidBar() {
+  R.pickedCount = null;
+  if (R.pick) {
+    var art = ART.troops[U[R.pick].art];
+    if (art && !IMG[art.file]) {
+      var sheet = img(art.file);
+      if (typeof sheet.decode === 'function') Promise.resolve(sheet.decode()).catch(function () {});
+    }
+  }
   var bar = $('troops'); bar.innerHTML = '';
   HERO_KEYS.forEach(function (k) {
     var hs = R.heroes[k]; if (!hs) return; var u = U[k], dead = hs.unit && hs.unit.dead, st = hs.state === 'ready' ? (R.pick === k ? ' on' : '') : dead || hs.used ? ' off' : ' skill';
@@ -1149,13 +1226,15 @@ function raidBar() {
   Object.keys(R.army).forEach(function (k) {
     if (!(R.army[k] > 0) && R.pick !== k) return;
     var c = h('button', 'tcard' + (R.pick === k ? ' on' : '') + (R.army[k] > 0 ? '' : ' off'), '<span class="cnt">x' + (R.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + U[k].art + '.webp)"></span><small>' + U[k].name + '</small>');
+    if (R.pick === k) R.pickedCount = c.querySelector('.cnt');
     c.onclick = function () { if (R.army[k] > 0) { R.pick = k; raidBar(); } }; bar.appendChild(c);
   });
 }
 function raidHud() {
   if (!R) return; var s = $('raid-top');
-  s.innerHTML = '<span class="stars">' + '★★★'.slice(0, R.stars || 0) + '<em>' + '★★★'.slice(R.stars || 0) + '</em></span><b>' + Math.floor((R.pct || 0) * 100) + '%</b>' +
+  var html = '<span class="stars">' + '★★★'.slice(0, R.stars || 0) + '<em>' + '★★★'.slice(R.stars || 0) + '</em></span><b>' + Math.floor((R.pct || 0) * 100) + '%</b>' +
     '<span>⏱ ' + clock(R.time * 1000) + '</span><span>' + icon('honey') + fmt(R.taken.honey) + ' ' + icon('veggie') + fmt(R.taken.veggie) + (R.lootTotal.syrup ? ' ' + icon('syrup') + fmt(R.taken.syrup) : '') + '</span>';
+  if (html !== R.hudHtml) { s.innerHTML = html; R.hudHtml = html; }
 }
 function showResult() {
   var r = R.result; sfx(r.stars ? 'win' : 'lose'); openSheet(r.stars ? 'ชนะ!' : 'แพ้แล้ว', function (body) {
@@ -1257,7 +1336,7 @@ input.tap = function (w) {
     if (COLONEL && Math.hypot(w.x - COLONEL.x, w.y - COLONEL.y) < 1.3) { // tap the colonel: he salutes and says something
       COLONEL.atk = now(); COLONEL.salutes = 1; COLONEL.wait = 2; COLONEL.face = Math.PI / 4; sfx('colonel'); buzz('light'); toast('🎖 ผู้พันเป็ด: ' + COLONEL_LINES[Math.floor(Math.random() * COLONEL_LINES.length)]); return; }
     var b = buildingAt(w, D.buildings); selectBuilding(b); if (b) { b.pop = now() - 450; sfx('tap'); buzz('light'); } dirty = true;
-  } else if (screen === 'raid' && R && !R.over) { if (deploy(w.x, w.y)) raidBar(); }
+  } else if (screen === 'raid' && R && !R.over) { dropTroop(w.x, w.y); }
 };
 input.press = function (w) {
   if (screen === 'home' && placing) { var o = placing, s = B[placing.k].size; return w.x >= o.x - .5 && w.x <= o.x + s + .5 && w.y >= o.y - .5 && w.y <= o.y + s + .5; }
@@ -1278,7 +1357,7 @@ function frame(t) {
   if (screen === 'home') { colonelTick(dt); homeTick(); if (Math.floor(t / 1000) !== Math.floor((t - dt * 1000) / 1000)) { hud(); if (selected && !moving) selectBuilding(selected, true); writeSave(); } }
   if (screen === 'raid' && R) {
     raidTick(dt); raidHud();
-    if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; if (deploy(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4)) raidBar(); }
+    if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; dropTroop(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4); }
   }
   draw(dt);
   requestAnimationFrame(frame);
@@ -1295,12 +1374,6 @@ function draw(dt) {
   FDT = dt || 0; ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0); ctx.imageSmoothingQuality = 'high';
   drawGround();
   var sc = scene(), list = [];
-  if (screen === 'raid' && R && !R.over && R.pick) { // red zone where ducks can't land
-    var flash = R.redFlash && now() - R.redFlash < 700;
-    var red = flash ? 'rgba(255,60,60,.24)' : 'rgba(255,80,80,.12)', enc = enclosed();
-    for (var ty = 0; ty < MAP; ty++) for (var tx = 0; tx < MAP; tx++) if (enc[ty * MAP + tx]) tileDiamond(tx, ty, 1, red, null);   // inside the walls
-    sc.buildings.forEach(function (b) { if (!b.dead && b.k !== 'wall' && !enc[(b.y - 1) * MAP + (b.x - 1)]) tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null); });
-  }
   if (screen === 'home' && !moving) selection().forEach(function (b) { tileDiamond(b.x, b.y, B[b.k].size, 'rgba(255,255,255,.18)', 'rgba(255,255,255,.75)'); });
   // a defense that is tapped, being placed or moved shows how far it reaches: faint ring on the grass (and the mortar's blind spot)
   if (screen === 'home') { var rings = []; if (placing) rings.push(placing); if (moving) moving.items.forEach(function (i) { rings.push({ k: i.b.k, x: i.x, y: i.y }); }); else if (selected) rings.push(selected);

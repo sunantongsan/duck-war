@@ -101,6 +101,12 @@ g('startRaid(1);var jar=R.buildings.find(b=>b.k==="honeyjar"),h0=jar.hp;damage(j
 ok(g('h0-h1===20&&h1-jar.hp===10'),'thief duck hits storages twice as hard');
 ok(g('Object.keys(U).filter(k=>!U[k].hidden).length')===19,'19 trainable troops');
 ok(g('Object.keys(U).every(k=>ART.troops[U[k].art])'),'every troop has its art');
+// Troops dropped together share the route search but advance independently.
+g('startRaid(8); var entry={x:2.1,y:3.1}, goal=R.buildings.find(b=>b.k==="hq");');
+g('var firstPath=findPath(entry,goal,1), secondPath=findPath(entry,goal,1); firstPath.shift();');
+ok(g('secondPath.length===firstPath.length+1'),'one duck advancing leaves its squadmate’s waypoints intact');
+g('var barrier=R.buildings.find(b=>b.k==="wall"); var barrierCell=barrier.y*MAP+barrier.x; damage(barrier,barrier.hp+1);');
+ok(g('grid()[barrierCell]===0 && R.routeCache.size===0'),'a destroyed wall opens its tile for the next route search');
 // every duck-house level must be affordable once storages are maxed for the level before it
 const reach=g(`(function(){var bad=[];for(var L=2;L<=MAX_LV;L++){var hl=L-1,c=B.hq.store*Math.pow(1.4,hl-1),n=maxCount('honeyjar',hl),jl=Math.min(MAX_LV,hl+1);c+=n*B.honeyjar.cap*Math.pow(1.7,jl-1);if(c<bCost('hq',L))bad.push(L);}return bad.join(',')})()`);
 ok(reach==='','every duck-house level is affordable'+(reach?' (not: '+reach+')':''));

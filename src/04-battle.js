@@ -27,7 +27,7 @@ function catBase(n) {
 function startRaid(n) {
   var base = catBase(n);
   R = { level: n, buildings: base.buildings.map(function (b) { var hp = bHp(b.k, b.lv); return Object.assign({}, b, { hp: hp, max: hp, cool: 0, aim: Math.PI * .75, dead: false }); }),
-        troops: [], shots: [], fx: [], time: 180, deployed: 0, over: false, result: null, taken: { honey: 0, veggie: 0, syrup: 0 }, army: Object.assign({}, D.army), pick: null };
+        routeCache: new Map(), groundRevision: 0, troops: [], shots: [], fx: [], time: 180, deployed: 0, over: false, result: null, taken: { honey: 0, veggie: 0, syrup: 0 }, army: Object.assign({}, D.army), pick: null };
   var share = { honey: 0, veggie: 0, syrup: 0 }, holders = R.buildings.filter(function (b) { var d = B[b.k]; return d.kind === 'store' || d.kind === 'make' || d.kind === 'hq'; });
   holders.forEach(function (b) { var d = B[b.k]; b.loot = {};
     ['honey', 'veggie', 'syrup'].forEach(function (r) { var w = d.kind === 'hq' ? .15 : d.store === r ? 1 : d.make === r ? .25 : 0; share[r] += w; b.loot[r] = w; }); });
@@ -95,11 +95,22 @@ function heroSkill(k) {
 
 // ---------- path finding: Dijkstra on tiles; buildings block, walls are passable but cost a lot (troops break them) ----------
 function grid() {
+  if (R.occupancy) return R.occupancy;
   var g = new Int16Array(MAP * MAP); R.buildings.forEach(function (b, i) { if (b.dead) return; var s = B[b.k].size; for (var x = b.x; x < b.x + s; x++) for (var y = b.y; y < b.y + s; y++) if (x >= 0 && y >= 0 && x < MAP && y < MAP) g[y * MAP + x] = i + 1; });
-  return g;
+  R.occupancy = g; return g;
 }
 function findPath(t, target, range) {
-  var g = grid(), sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1), N = MAP * MAP;
+  var sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1);
+  var key = (sy * MAP + sx) + ':' + target.id + ':' + range;
+  if (!R.routeCache.has(key)) {
+    if (R.routeCache.size >= 128) R.routeCache.clear();
+    R.routeCache.set(key, searchPath(sx, sy, target, range));
+  }
+  var route = R.routeCache.get(key);
+  return route && route.slice(); // troops advance independently through shared waypoints
+}
+function searchPath(sx, sy, target, range) {
+  var g = grid(), N = MAP * MAP;
   var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), hk = [], hn = [];   // binary heap of (cost, cell)
   function push(n, k) { hk.push(k); hn.push(n); var i = hk.length - 1; while (i) { var p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hn[i] = hn[p]; i = p; } hk[i] = k; hn[i] = n; }
   function pop() { var top = hn[0], lk = hk.pop(), ln = hn.pop(), L = hk.length; if (L) { var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i, mk = lk;
@@ -136,6 +147,7 @@ function damage(target, amount, from) {
   if (target.dead) return;
   if (from && U[from.kind] && U[from.kind].wallBonus && target.k === 'wall') amount *= U[from.kind].wallBonus;
   if (from && U[from.kind] && U[from.kind].resBonus && target.k && /store|make/.test(B[target.k].kind)) amount *= U[from.kind].resBonus;
+  if (target.k === 'wall') R.routeCache.clear(); // wall HP changes the cost of crossing it
   target.hp -= amount; target.hitAt = now();
   if (target.k) { // building: loot and debris
     if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { var v = target.loot[r] || 0, give = Math.min(v, v * amount / target.max * 1.0001); target.loot[r] -= give; R.taken[r] += give; });
@@ -143,7 +155,9 @@ function damage(target, amount, from) {
   }
   if (target.hp <= 0) {
     target.hp = 0; target.dead = true; target.deadAt = now();
-    if (target.k) { sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
+    if (target.k) {
+      R.occupancy = null; R.routeCache.clear(); R.groundRevision++;
+      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
     else { if (target.side === 'duck' && U[target.kind].hero) { D.heroRest = D.heroRest || {}; D.heroRest[target.kind] = now() + heroRestMs(target.lv || 1); toast('💫 ' + U[target.kind].name + ' หมดแรง ต้องพักฟื้นก่อนบุกครั้งหน้า'); if (typeof raidBar === 'function') raidBar(); }
       if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
@@ -175,7 +189,7 @@ function troopTick(t, dt) {
   if (u.burrow) return digTick(t, u, dt);
   if (u.air) return flyTick(t, u, dt);
   // fight back against a cat guard close by
-  var cat = u.hit === 'blast' ? null : alive(R.troops).filter(function (o) { return o.side === 'cat' && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); })[0];
+  var cat = u.hit === 'blast' ? null : R.troops.find(function (o) { return o.side === 'cat' && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); });
   if (cat) { var cd = Math.hypot(cat.x - t.x, cat.y - t.y); t.face = Math.atan2(cat.y - t.y, cat.x - t.x);
     if (cd > u.range + .45) return step(t, cat.x, cat.y, u.speed, dt); return attack(t, cat, u); }
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); t.path = t.target ? findPath(t, t.target, u.range) : null; t.wall = null; }
@@ -301,7 +315,17 @@ function raidTick(dt) {
   R.buildings.forEach(function (b) { turretTick(b, dt); });
   R.shots = R.shots.filter(function (s) { return !shotTick(s, dt); });
   // soft separation so ducks don't stack on one spot
-  var live = alive(R.troops); for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) { var a = live[i], b = live[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), r0 = big(a) + big(b); if (d > 0 && d < r0) { var p = (r0 - d) / 4 / d; a.x -= dx * p; a.y -= dy * p; b.x += dx * p; b.y += dy * p; } }
+  var live = alive(R.troops), radii = live.map(big);
+  for (var i = 0; i < live.length; i++) {
+    var a = live[i];
+    for (var j = i + 1; j < live.length; j++) {
+      var b = live[j], dx = b.x - a.x, dy = b.y - a.y;
+      var squared = dx * dx + dy * dy, radius = radii[i] + radii[j];
+      if (squared === 0 || squared >= radius * radius) continue;
+      var distance = Math.sqrt(squared), push = (radius - distance) / (4 * distance);
+      a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push;
+    }
+  }
   var pct = destruction(), hqDead = R.buildings.some(function (b) { return b.k === 'hq' && b.dead; });
   R.stars = (pct >= .5 ? 1 : 0) + (hqDead ? 1 : 0) + (pct >= 1 ? 1 : 0); R.pct = pct;
   var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; }) || HERO_KEYS.some(function (k) { return R.heroes[k] && R.heroes[k].state === 'ready'; });
