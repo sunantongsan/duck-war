@@ -168,12 +168,42 @@ var SFX = {
   horn: function () { [[392, 0], [392, .18], [523, .36]].forEach(function (n) { tone({ f: n[0], type: 'sawtooth', vol: .1, a: .02, d: n[1] === .36 ? .55 : .14, at: n[1], bp: 1200, q: 1 }); }); },
   win: function () { [523, 659, 784, 1046, 784, 1046].forEach(function (f, i) { tone({ f: f, type: 'triangle', vol: .17, d: i === 5 ? .6 : .13, at: i * .12 }); }); quack(.8, 1.1, .2); quack(.95, 1.2, .2); },
   lose: function () { [392, 370, 349, 262].forEach(function (f, i) { tone({ f: f, type: 'triangle', vol: .15, d: i === 3 ? .7 : .22, at: i * .25, vib: i === 3 ? 6 : 0, vibAmt: 6 }); }); },
+  // ---------- duck war cries ----------
+  quackHi: function () { var p = 1.15 + Math.random() * .3; quack(0, p, .17); if (Math.random() < .4) quack(.1, p * 1.06, .13); },
+  quackLo: function () { var p = .62 + Math.random() * .1; quack(0, p, .26); tone({ f: 110, f2: 80, type: 'sine', vol: .12, d: .15 }); },
+  peep: function () { tone({ f: 1900, f2: 2500, type: 'sine', vol: .07, d: .06 }); tone({ f: 2100, f2: 2700, type: 'sine', vol: .06, d: .05, at: .08 }); },
+  cackle: function () { for (var i = 0; i < 4; i++) tone({ f: 900 - i * 60, f2: 700 - i * 60, type: 'sawtooth', vol: .07, d: .06, at: i * .085, bp: 1600, q: 4 }); },
+  bark: function () { tone({ f: 420, f2: 230, type: 'sawtooth', vol: .2, a: .01, d: .11, bp: 900, q: 2 }); noise({ type: 'bandpass', f: 700, q: 1.5, vol: .12, d: .08 }); if (Math.random() < .5) tone({ f: 460, f2: 250, type: 'sawtooth', vol: .16, d: .1, at: .17, bp: 900, q: 2 }); },
+  squawk: function () { tone({ f: 1300, f2: 700, type: 'sawtooth', vol: .14, a: .01, d: .2, bp: 1800, q: 3, vib: 25, vibAmt: 80 }); },
+  oink: function () { tone({ f: 260, f2: 200, type: 'sawtooth', vol: .16, a: .02, d: .14, bp: 600, q: 4, vib: 30, vibAmt: 25 }); },
+  wee: function () { tone({ f: 900, f2: 1600, type: 'triangle', vol: .08, a: .03, d: .25, vib: 9, vibAmt: 40 }); },
+  // ---------- duck weapons ----------
+  pew: function () { tone({ f: 900, f2: 300, type: 'triangle', vol: .09, d: .09 }); noise({ type: 'highpass', f: 3000, vol: .05, d: .03 }); },
+  whirl: function () { noise({ type: 'bandpass', f: 500, f2: 2400, q: 2, vol: .16, a: .05, d: .3 }); noise({ type: 'bandpass', f: 2400, f2: 600, q: 2, vol: .12, a: .02, d: .25, at: .3 }); },
+  swoosh: function () { noise({ type: 'bandpass', f: 2600, f2: 500, q: 1.5, vol: .16, a: .04, d: .28 }); },
+  gust: function () { noise({ type: 'lowpass', f: 900, f2: 300, vol: .18, a: .08, d: .4 }); },
+  swing: function () { noise({ type: 'bandpass', f: 400, f2: 1800, q: 1.2, vol: .14, a: .03, d: .14 }); },
+  // ---------- defenses ----------
+  twang: function () { tone({ f: 180, f2: 120, type: 'sawtooth', vol: .14, a: .003, d: .3, vib: 22, vibAmt: 18, bp: 700, q: 2 }); noise({ type: 'bandpass', f: 1800, q: 2, vol: .12, d: .05 }); tone({ f: 70, f2: 45, type: 'sine', vol: .25, d: .12 }); },
+  cooker: function () { noise({ type: 'highpass', f: 2500, vol: .22, a: .01, d: .35 }); tone({ f: 120, f2: 50, type: 'sine', vol: .45, d: .2, at: .02 }); noise({ type: 'lowpass', f: 500, vol: .2, d: .12, at: .02 }); tone({ f: 1900, f2: 2100, type: 'sine', vol: .05, d: .25, at: .05 }); },
+  spray: function () { noise({ type: 'bandpass', f: 3200, f2: 1800, q: 1.5, vol: .16, a: .02, d: .3 }); tone({ f: 200, f2: 140, type: 'sine', vol: .12, d: .1 }); },
+  flame: function () { noise({ type: 'bandpass', f: 400, f2: 1600, q: .7, vol: .3, a: .04, d: .35 }); for (var i = 0; i < 4; i++) noise({ type: 'highpass', f: 4000, vol: .06, d: .02, at: .05 + Math.random() * .25 }); },
+  // ---------- impacts ----------
+  stone: function () { tone({ f: 160, f2: 70, type: 'sine', vol: .32, d: .12 }); noise({ type: 'bandpass', f: 1200, q: 1.5, vol: .2, d: .07 }); for (var i = 0; i < 2; i++) tone({ f: 600 + Math.random() * 600, type: 'triangle', vol: .05, d: .04, at: .07 + i * .06 }); },
+  boom: function () { tone({ f: 110, f2: 32, type: 'sine', vol: .6, d: .55 }); noise({ type: 'lowpass', f: 1800, f2: 120, vol: .45, a: .005, d: .6 }); noise({ type: 'highpass', f: 3000, vol: .12, d: .08 }); },
+  sizzle: function () { noise({ type: 'highpass', f: 4500, vol: .14, a: .02, d: .4 }); noise({ type: 'lowpass', f: 600, f2: 200, vol: .18, d: .15 }); },
+  squish: function () { noise({ type: 'lowpass', f: 1500, f2: 250, vol: .32, d: .22 }); tone({ f: 260, f2: 90, type: 'sine', vol: .22, d: .18 }); tone({ f: 900, f2: 1300, type: 'sine', vol: .05, d: .08, at: .12 }); },
+  chime: function () { [1568, 2093].forEach(function (f, i) { tone({ f: f, type: 'sine', vol: .07, d: .2, at: i * .05 }); }); },
   error: function () { tone({ f: 220, type: 'square', vol: .08, d: .12 }); tone({ f: 180, type: 'square', vol: .08, d: .16, at: .12 }); }
 };
-var SFX_GAP = { quack: 90, deploy: 70, stab: 60, smash: 80, bite: 80, shot: 50, fire: 120, egg: 90, water: 60, thud: 50, wall: 80, duckdie: 150, meow: 400, dig: 250, heal: 300, hiss: 300 };
+var SFX_GAP = { quackHi: 140, quackLo: 220, peep: 150, cackle: 500, bark: 260, squawk: 300, oink: 300, wee: 250, pew: 70, whirl: 300, swoosh: 160, gust: 300, swing: 90,
+  twang: 90, cooker: 300, spray: 140, flame: 180, stone: 80, boom: 160, sizzle: 200, squish: 120, chime: 160, crash: 120, cracker: 90, quack: 90, deploy: 70, stab: 60, smash: 80, bite: 80, shot: 50, fire: 120, egg: 90, water: 60, thud: 50, wall: 80, duckdie: 150, meow: 400, dig: 250, heal: 300, hiss: 300 };
+var SFX_MUST = { crash: 1, boom: 1, win: 1, lose: 1, horn: 1, tap: 1, done: 1, coin: 1, error: 1, colonel: 1, build: 1 };
 function sfx(name) {
   if (!SND.on) return; var c = audio(); if (!c || c.state !== 'running' || !SFX[name]) return;
-  var t = performance.now(); if (t - (SND.last[name] || 0) < (SFX_GAP[name] || 30)) return; SND.last[name] = t;
+  var t = performance.now(); if (t - (SND.last[name] || 0) < (SFX_GAP[name] || 30)) return;
+  var Q = SND.recent || (SND.recent = []); while (Q.length && t - Q[0] > 150) Q.shift();
+  if (Q.length >= 9 && !SFX_MUST[name]) return; Q.push(t); SND.last[name] = t;
   try { SFX[name](); } catch (e) {}
 }
 function setSound(on) { SND.on = on; if (SND.sfxBus) SND.sfxBus.gain.value = on ? 1 : 0; soundSave(); }
@@ -627,23 +657,31 @@ function damage(target, amount, from) {
     target.hp = 0; target.dead = true; target.deadAt = now();
     if (target.k) {
       R.occupancy = null; R.routeCache.clear(); R.groundRevision++;
-      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
+      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); if (target.k !== 'wall') crashFx(c2.x, c2.y, B[target.k].size, target.k === 'hq'); else burst(c2.x, c2.y, .4, 6, 'dot', ['#b98552', '#e2c08a'], 2.4, 2.4, .5, 3.5); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
     else { if (target.side === 'duck' && U[target.kind].hero) { D.heroRest = D.heroRest || {}; D.heroRest[target.kind] = now() + heroRestMs(target.lv || 1); toast('💫 ' + U[target.kind].name + ' หมดแรง ต้องพักฟื้นก่อนบุกครั้งหน้า'); if (typeof raidBar === 'function') raidBar(); }
       if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
       sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
   }
 }
+var TURRET_SFX = { slingshot: 'twang', boxtower: 'pew', mortar: 'cooker', watergun: 'spray', chili: 'flame' };
+var LAND_SFX = { rock: 'stone', egg: 'boom', water: 'water', chili: 'sizzle', tomato: 'squish', cracker: 'cracker', pebble: 'thud', feather: 'thud', magic: 'chime' };
+var CRY = { fork: 'quackHi', thief: 'quackHi', digger: 'quackHi', duckling: 'peep', sling: 'quackHi', giant: 'quackLo', pot: 'quackLo', bomber: 'quackHi', chef: 'quack', nurse: 'quack',
+  witch: 'cackle', dog: 'bark', h_king: 'bark', egret: 'squawk', h_queen: 'squawk', pig: 'oink', mop: 'quackHi', plane: 'wee', kite: 'wee', prop: 'wee', fan: 'quackLo', fanlet: 'peep', balloon: 'quackHi', h_colonel: 'quackLo' };
+var ATK_SFX = { sling: 'pew', mop: 'whirl', plane: 'swoosh', kite: 'swoosh', fan: 'gust', fanlet: 'gust', giant: 'swing', pot: 'swing', h_colonel: 'swing', pig: 'oink', prop: 'swing' };
+var BIG_HIT = { giant: 1, pot: 1, egret: 1, dog: 1, pig: 1, cat_king: 1 };
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
   var tx = to.k ? center(to).x : to.x, ty = to.k ? center(to).y : to.y, d = Math.hypot(tx - sx, ty - sy);
   var tz = to.k ? 0 : airAlt(to) * .9; sz = (sz || .8) + (from && !from.k ? airAlt(from) * .85 : 0);
   R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
+  muzzleFx(kind, sx, sy, sz, from);
 }
 function troopTick(t, dt) {
   if (t.dead) return;
   t.cool -= dt; t.moving = false;
   if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; sfx(pd.kind === 'bite' ? 'bite' : pd.kind === 'smash' || pd.kind === 'spin' ? 'smash' : 'stab');
-    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; if (R.fx.length < 160) R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
+    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; if (R.fx.length < 160) R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind });
+    meleeFx(pd.kind, (pc.x + t.x * 2) / 3, (pc.y + t.y * 2) / 3, t, BIG_HIT[t.kind] || (t.side === 'duck' && U[t.kind].hero)); }
   if (t.side === 'cat') return catTick(t, dt);
   var u = U[t.kind];
   if (u.pref === 'heal') { // nurse: follow and heal the most hurt duck nearby
@@ -707,7 +745,7 @@ function digTick(t, u, dt) {
 // wall-breaker duck: one big bang that wrecks walls (x40) and nearby buildings, and the duck with it
 function blast(t, u, dmg) {
   R.buildings.forEach(function (b) { if (!b.dead && rectDist(t.x, t.y, b) <= u.splash) damage(b, dmg, t); });
-  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .9, max: .9, size: 1.4 }); sfx('cracker'); sfx('crash');
+  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .9, max: .9, size: 1.4 }); sfx('cracker'); sfx('crash'); impactFx('cracker', t.x, t.y); shake(5);
   t.hp = 0; t.dead = true; t.deadAt = now();
 }
 // mop duck: the spin hits every building and cat around it
@@ -729,6 +767,8 @@ function step(t, x, y, speed, dt) {
 }
 function attack(t, target, u) {
   if (t.cool > 0) return; var T = R.now || now(); t.cool = u.rate; t.atk = T;
+  if (t.side === 'duck' && Math.random() < .45) sfx(CRY[t.kind] || 'quack');   // a war cry with the swing (the sound system keeps the crowd from getting noisy)
+  if (t.side === 'duck' && ATK_SFX[t.kind]) sfx(ATK_SFX[t.kind]);
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind, t.lv);
   if (t.rage) dmg *= 1.5;
   if (t.side === 'duck') {
@@ -762,7 +802,7 @@ function turretTick(b, dt) {
   var want = Math.atan2(target.y - c.y, target.x - c.x), diff = Math.atan2(Math.sin(want - b.aim), Math.cos(want - b.aim));
   b.aim += clamp(diff, -6 * dt, 6 * dt);
   if (b.cool <= 0 && Math.abs(diff) < .35) {
-    b.cool = d.rate; b.fire = T; sfx(d.shot === 'egg' ? 'egg' : d.shot === 'water' ? 'water' : 'shot');
+    b.cool = d.rate; b.fire = T; sfx(TURRET_SFX[b.k] || 'shot');
     shoot(b, target, d.shot, grow(d.dmg, lv, 1.17), d.splash, d.shot === 'egg' ? 6 : 12, c.x + Math.cos(b.aim) * .6, c.y + Math.sin(b.aim) * .6, 1.2);
   }
 }
@@ -773,8 +813,8 @@ function shotTick(s, dt) {
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
-    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
-  else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
+    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); impactFx(s.kind, s.tx, s.ty); sfx(LAND_SFX[s.kind] || 'splat'); }
+  else if (s.target) { sfx(LAND_SFX[s.kind] || 'thud'); impactFx(s.kind, s.tx, s.ty); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }
 // soft separation so ducks don't stack on one spot: a 1-tile bucket grid, so each duck only checks its neighbours
@@ -1446,6 +1486,7 @@ function drawCrown(x, y, s, kind) { // gold crown that sits on the king's and qu
 // ---------- shots and effects ----------
 var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4], tomato: ['#e8231a', 6] };
 function drawShot(s) {
+  trailFx(s);
   var p = toScreen(s.x, s.y, s.z), g = toScreen(s.x, s.y), st = SHOT[s.kind] || SHOT.pebble, r = st[1] * cam.s / 40;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y, r, r * .5, 0, 0, 7); ctx.fill();
   ctx.fillStyle = st[0]; ctx.strokeStyle = 'rgba(60,40,20,.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill(); ctx.stroke();
@@ -1477,6 +1518,110 @@ function drawFx(f, dt) {
   if (f.t === 'heal') { ctx.fillStyle = 'rgba(110,230,120,' + (1 - q) + ')'; ctx.font = 'bold ' + (16 * s | 0) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+', c.x, c.y - 30 * s - q * 20 * s); return true; }
   return true;
 }
+
+// ---- src/055-fx.js ----
+// Duck War — weapon effects: muzzle flashes, trails, impact bursts, comic hit words and a little screen shake.
+// Built to stay smooth on phones: one pooled particle list with a hard cap (fewer particles when the battle is crowded),
+// only flat shapes (no gradients, no blur), comic words rate-limited, and the shake moves the canvas with CSS (free on the GPU).
+var PARTS = [], PART_MAX = 260, WORDS = [], WORD_MAX = 5, WORD_LAST = 0, SHAKE = { a: 0 };
+function partBudget(n) { // how many of n particles we can afford right now
+  var room = PART_MAX - PARTS.length; if (room <= 0) return 0;
+  var crowd = R && R.troops ? R.troops.length : 0; if (crowd > 60) n = Math.ceil(n / 2);
+  return Math.min(n, room);
+}
+// kinds: dot (falls), spark (streak along its velocity), ember (rises, flickers), drop (falls, stretches), star (spins, fades), ring (grows on the ground), feather (drifts down)
+function part(o) { if (PARTS.length < PART_MAX) PARTS.push(o); }
+function burst(x, y, z, n, kind, colors, speed, up, life, size) {
+  n = partBudget(n);
+  for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, v = speed * (.5 + Math.random() * .7);
+    part({ k: kind, x: x, y: y, z: z, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: up * (.5 + Math.random() * .8), life: life * (.7 + Math.random() * .5), age: 0,
+           c: colors[i % colors.length], s: size * (.7 + Math.random() * .6), r: Math.random() * 6.28 }); }
+}
+function ring(x, y, r, color, life, w) { if (PARTS.length < PART_MAX) PARTS.push({ k: 'ring', x: x, y: y, z: 0, vx: 0, vy: 0, vz: 0, life: life, age: 0, c: color, s: r, w: w || 4 }); }
+function word(text, x, y, z, color, big) { // comic sound word that pops and floats up
+  var t = now(); if (WORDS.length >= WORD_MAX || t - WORD_LAST < 220) return; WORD_LAST = t;
+  WORDS.push({ t: text, x: x, y: y, z: z, c: color, age: 0, life: .75, big: big || 1, tilt: (Math.random() - .5) * .3 });
+}
+function shake(a) { SHAKE.a = Math.min(7, Math.max(SHAKE.a, a)); }
+
+// ---------- what each weapon does ----------
+function muzzleFx(kind, x, y, z, from) { // a shot leaves: flash + puff at the muzzle
+  if (kind === 'rock') { burst(x, y, z, 6, 'dot', ['#bda88a', '#8a7a6a'], 1.6, 1, .45, 3); ring(x, y, .5, 'rgba(255,240,200,', .3, 3); }
+  else if (kind === 'pebble') burst(x, y, z, 3, 'spark', ['#fff1c4', '#ffd36b'], 3, .6, .2, 2);
+  else if (kind === 'egg') { emitSmoke(x, y, z, 'grey', .9, 3); burst(x, y, z, 10, 'ember', ['#ffffff', '#dfe8ee'], 1.2, 2.2, .6, 4); shake(2); }   // the pressure cooker vents a gush of steam
+  else if (kind === 'water') burst(x, y, z, 9, 'drop', ['#8fe0ff', '#d4f4ff', '#4cc2ff'], 2.6, 1.2, .5, 3);
+  else if (kind === 'chili') burst(x, y, z, 12, 'ember', ['#ffef7a', '#ffae2b', '#ff5a1a', '#e3261a'], 2.2, 1.2, .45, 4.5);
+  else if (kind === 'tomato') burst(x, y, z, 3, 'drop', ['#e8231a'], .8, -.5, .4, 2.5);
+  else if (kind === 'feather') burst(x, y, z, 3, 'feather', ['#ffffff', '#e7eef6'], .8, .6, .8, 4);
+  else if (kind === 'magic') burst(x, y, z, 8, 'star', ['#e4b8ff', '#b46bff', '#ffffff'], 1.4, 1, .5, 3.5);
+  else if (kind === 'cracker') burst(x, y, z, 4, 'spark', ['#ffe08a', '#ff9d2b'], 2, .8, .25, 2);
+}
+function trailFx(s) { // called every frame per shot in flight; cheap, throttled
+  if (PARTS.length > PART_MAX * .7 || Math.random() < .35) return;
+  if (s.kind === 'chili') part({ k: 'ember', x: s.x, y: s.y, z: s.z, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, vz: .6, life: .35, age: 0, c: Math.random() < .5 ? '#ffae2b' : '#ff5a1a', s: 4, r: 0 });
+  else if (s.kind === 'magic') part({ k: 'star', x: s.x, y: s.y, z: s.z, vx: 0, vy: 0, vz: .2, life: .4, age: 0, c: '#d9a8ff', s: 3, r: Math.random() * 6 });
+  else if (s.kind === 'cracker') part({ k: 'spark', x: s.x, y: s.y, z: s.z + .25, vx: (Math.random() - .5) * 2, vy: (Math.random() - .5) * 2, vz: 1, life: .2, age: 0, c: '#ffd36b', s: 2, r: 0 });
+  else if (s.kind === 'egg') part({ k: 'ember', x: s.x, y: s.y, z: s.z, vx: 0, vy: 0, vz: .4, life: .5, age: 0, c: '#ffffff', s: 3.5, r: 0 });
+  else if (s.kind === 'water') part({ k: 'drop', x: s.x, y: s.y, z: s.z, vx: (Math.random() - .5) * .6, vy: (Math.random() - .5) * .6, vz: -.5, life: .3, age: 0, c: '#9fe3ff', s: 2.5, r: 0 });
+}
+function impactFx(kind, x, y, big) { // a shot lands
+  if (kind === 'rock') { burst(x, y, .3, 8, 'dot', ['#8a7a6a', '#bda88a', '#5e5246'], 2.4, 2.6, .6, 3.5); emitSmoke(x, y, .1, 'dust', .45, 2); word('ปั้ก!', x, y, 1.1, '#fff2c2'); shake(1.5); }
+  else if (kind === 'pebble') burst(x, y, .4, 4, 'spark', ['#fff4cf', '#ffd36b'], 2.6, 1.2, .2, 2);
+  else if (kind === 'egg') { burst(x, y, .2, 14, 'dot', ['#ffd94a', '#fff6e0', '#ffb300'], 3.2, 3, .7, 4); ring(x, y, 1.6, 'rgba(255,236,150,', .45, 6); emitSmoke(x, y, .2, 'grey', 1, 3); word('ตูม!', x, y, 1.3, '#ffd94a', 1.3); shake(4.5); }
+  else if (kind === 'water') { burst(x, y, .6, 10, 'drop', ['#8fe0ff', '#d4f4ff', '#4cc2ff'], 2.4, 2, .55, 3); ring(x, y, .7, 'rgba(160,230,255,', .35, 3); }
+  else if (kind === 'chili') { burst(x, y, .3, 14, 'ember', ['#ffef7a', '#ffae2b', '#ff5a1a', '#e3261a'], 2.2, 2.2, .6, 5); ring(x, y, 1, 'rgba(255,120,40,', .4, 5); word('ฟู่!', x, y, 1.1, '#ffae2b'); shake(1.5); }
+  else if (kind === 'tomato') { burst(x, y, .2, 12, 'dot', ['#e8231a', '#c4140f', '#ffd27a'], 2.8, 2.4, .65, 3.5); word('แปะ!', x, y, 1.1, '#ff5a4a', 1.1); shake(2.5); }
+  else if (kind === 'feather') burst(x, y, .6, 4, 'feather', ['#ffffff', '#e7eef6'], 1, .5, .9, 4);
+  else if (kind === 'magic') { burst(x, y, .5, 10, 'star', ['#e4b8ff', '#b46bff', '#ffffff'], 2, 1.4, .55, 4); ring(x, y, .8, 'rgba(190,120,255,', .4, 4); }
+  else if (kind === 'cracker') { burst(x, y, .3, 16, 'spark', ['#fff3a0', '#ffb02b', '#ff5a1a'], 4, 2.6, .35, 3); ring(x, y, 1.3, 'rgba(255,200,90,', .4, 6); word('ปัง!', x, y, 1.2, '#ffd23f', 1.2); shake(3.5); }
+}
+var HIT_WORD = { stab: ['ฉึก!', '#ffffff'], smash: ['ปึ้ก!', '#ffe08a'], bite: ['งับ!', '#ff8a7a'], spin: ['วืด!', '#cfefff'] };
+function meleeFx(kind, x, y, attacker, big) { // a blow lands
+  if (kind === 'stab') burst(x, y, .5, 5, 'spark', ['#ffffff', '#fff1b0'], 3.4, 1, .18, 2.2);
+  else if (kind === 'smash') { burst(x, y, .3, big ? 12 : 6, 'dot', ['#c8a46e', '#8f7450', '#efe1c0'], 2.6, 2.6, .55, 3.5); ring(x, y, big ? 1.4 : .9, 'rgba(255,240,190,', .35, 5); emitSmoke(x, y, .1, 'dust', big ? .8 : .5, big ? 3 : 1); shake(big ? 4 : 1.5); }
+  else if (kind === 'bite') { burst(x, y, .6, 6, 'star', ['#ffffff', '#ffd0c8'], 2, 1, .3, 3); shake(1.5); }
+  else if (kind === 'spin') burst(x, y, .5, 8, 'spark', ['#e8f6ff', '#ffffff', '#9fdcff'], 3.6, .6, .22, 2.4);
+  var w = HIT_WORD[kind]; if (w && (big || Math.random() < .3)) word(w[0], x, y, 1.1 + (big ? .4 : 0), w[1], big ? 1.25 : 1);
+}
+function crashFx(x, y, size, hq) { // a building falls
+  burst(x, y, .5, 10 + size * 4, 'dot', ['#c58a52', '#f2e7c9', '#9b6b3a', '#6d5a4a'], 3.2, 3.4, .9, 4.5);
+  ring(x, y, size * .9, 'rgba(255,230,180,', .5, 7); word(hq ? 'พังทลาย!' : 'พัง!', x, y, 1.6, '#ffcf3a', hq ? 1.6 : 1.3); shake(hq ? 7 : 4);
+}
+
+// ---------- drawing (called once a frame after the troops) ----------
+function drawParts(dt) {
+  var s = cam.s / 40, n = 0;
+  for (var i = 0; i < PARTS.length; i++) {
+    var p = PARTS[i]; p.age += dt; if (p.age >= p.life) continue; PARTS[n++] = p;
+    var q = p.age / p.life, a = 1 - q;
+    if (p.k === 'ring') { var c = toScreen(p.x, p.y), r = p.s * cam.s * (.25 + q * .9);
+      ctx.strokeStyle = p.c + (a * .9) + ')'; ctx.lineWidth = Math.max(1, p.w * s * a); ctx.beginPath(); ctx.ellipse(c.x, c.y, r, r * ISO, 0, 0, 7); ctx.stroke(); continue; }
+    var g = p.k === 'ember' ? -.6 : p.k === 'feather' ? 1.2 : 9;   // embers rise, feathers float, the rest fall
+    p.vz -= g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    if (p.z < 0) { p.z = 0; p.vz *= -.35; p.vx *= .6; p.vy *= .6; }
+    var o = toScreen(p.x, p.y, p.z), sz = p.s * s + .6;
+    ctx.globalAlpha = Math.min(1, a * 1.6); ctx.fillStyle = p.c;
+    if (p.k === 'spark') { var e = toScreen(p.x - p.vx * .06, p.y - p.vy * .06, p.z - p.vz * .06); ctx.strokeStyle = p.c; ctx.lineWidth = sz * .7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(e.x, e.y); ctx.stroke(); }
+    else if (p.k === 'drop') { ctx.beginPath(); ctx.ellipse(o.x, o.y, sz * .55, sz * (1 + Math.min(1.5, Math.abs(p.vz) * .25)) * .6, 0, 0, 7); ctx.fill(); }
+    else if (p.k === 'ember') { var f = sz * (1 - q * .6) * (.8 + Math.random() * .4); ctx.fillRect(o.x - f / 2, o.y - f / 2, f, f); }
+    else if (p.k === 'star') { p.r += dt * 8; var t = sz * 1.3; ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(p.r); ctx.fillRect(-t / 2, -t / 8, t, t / 4); ctx.fillRect(-t / 8, -t / 2, t / 4, t); ctx.restore(); }
+    else if (p.k === 'feather') { p.r += dt * 3; ctx.save(); ctx.translate(o.x + Math.sin(p.r) * 3 * s, o.y); ctx.rotate(Math.sin(p.r) * .6); ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.2, sz * .4, 0, 0, 7); ctx.fill(); ctx.restore(); }
+    else { ctx.fillRect(o.x - sz / 2, o.y - sz / 2, sz, sz); }
+  }
+  PARTS.length = n; ctx.globalAlpha = 1;
+  // comic words: pop in big, settle, float up and fade
+  var m = 0;
+  for (i = 0; i < WORDS.length; i++) { var w = WORDS[i]; w.age += dt; if (w.age >= w.life) continue; WORDS[m++] = w;
+    var wq = w.age / w.life, pop = wq < .15 ? .6 + wq / .15 * .7 : 1.3 - Math.min(.3, (wq - .15) * 1.2), wp = toScreen(w.x, w.y, w.z + wq * .6), fs = Math.round(15 * s * w.big * pop + 6);
+    ctx.save(); ctx.translate(wp.x, wp.y); ctx.rotate(w.tilt); ctx.globalAlpha = wq > .7 ? (1 - wq) / .3 : 1;
+    ctx.font = '900 ' + fs + 'px "Kanit","Prompt",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, fs * .22); ctx.strokeStyle = '#3a2210'; ctx.strokeText(w.t, 0, 0); ctx.fillStyle = w.c; ctx.fillText(w.t, 0, 0); ctx.restore(); }
+  WORDS.length = m; ctx.globalAlpha = 1;
+  // shake: move the canvas element itself (no redraw cost); decays quickly
+  if (SHAKE.a > .05) { SHAKE.a *= Math.pow(.0009, dt); var sx = (Math.random() - .5) * 2 * SHAKE.a, sy = (Math.random() - .5) * 2 * SHAKE.a; canvas.style.transform = 'translate(' + sx.toFixed(1) + 'px,' + sy.toFixed(1) + 'px)'; SHAKE.on = true; }
+  else if (SHAKE.on) { SHAKE.a = 0; SHAKE.on = false; canvas.style.transform = ''; }
+}
+function clearFx() { PARTS.length = 0; WORDS.length = 0; SHAKE.a = 0; if (SHAKE.on) { SHAKE.on = false; canvas.style.transform = ''; } }
 
 // ---- src/06-ui.js ----
 // Duck War — screens and panels (HTML over the canvas): home HUD, building panel, build menu, army, raid HUD, results.
@@ -1637,7 +1782,7 @@ function raidPreload() {
     else if (d.art && ART.buildings[d.art]) { var ab = ART.buildings[d.art]; files.push(ab.stages[st].file); if (ab.rubble) files.push(ab.rubble.file); } });
   preload(files);
 }
-function enterRaid(n) { startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
+function enterRaid(n) { clearFx(); startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
 function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
@@ -1686,7 +1831,7 @@ function showResult() {
     var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = goHome; body.appendChild(b);
   });
 }
-function goHome() { closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
+function goHome() { clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
 
 // ---------- sound settings ----------
 function soundMenu() {
@@ -1860,6 +2005,7 @@ function draw(dt) {
     R.buildings.forEach(function (b) { if (!b.dead && b.hp < b.max && b.k !== 'wall') { var c = center(b); hpBar(c.x, c.y, B[b.k].size * 1.3, b.hp / b.max, '#7be36a'); } });
     R.shots.forEach(drawShot); R.fx = R.fx.filter(function (f) { return drawFx(f, dt); });
   }
+  if (PARTS.length || WORDS.length || SHAKE.on) drawParts(dt || 0);
 }
 function boot() {
   D = migrateSave(loadSave() || newGame()); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades

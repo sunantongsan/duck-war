@@ -156,7 +156,7 @@ function raidPreload() {
     else if (d.art && ART.buildings[d.art]) { var ab = ART.buildings[d.art]; files.push(ab.stages[st].file); if (ab.rubble) files.push(ab.rubble.file); } });
   preload(files);
 }
-function enterRaid(n) { startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
+function enterRaid(n) { clearFx(); startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
 function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
@@ -205,7 +205,7 @@ function showResult() {
     var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = goHome; body.appendChild(b);
   });
 }
-function goHome() { closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
+function goHome() { clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
 
 // ---------- sound settings ----------
 function soundMenu() {

@@ -163,23 +163,31 @@ function damage(target, amount, from) {
     target.hp = 0; target.dead = true; target.deadAt = now();
     if (target.k) {
       R.occupancy = null; R.routeCache.clear(); R.groundRevision++;
-      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); buzz(target.k === 'hq' ? 'heavy' : 'medium');
+      sfx(target.k === 'wall' ? 'wall' : 'crash'); var c2 = center(target); R.fx.push({ t: 'boom', x: c2.x, y: c2.y, life: .9, max: .9, size: B[target.k].size }); if (target.k !== 'wall') crashFx(c2.x, c2.y, B[target.k].size, target.k === 'hq'); else burst(c2.x, c2.y, .4, 6, 'dot', ['#b98552', '#e2c08a'], 2.4, 2.4, .5, 3.5); buzz(target.k === 'hq' ? 'heavy' : 'medium');
       if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { R.taken[r] += target.loot[r] || 0; target.loot[r] = 0; }); }
     else { if (target.side === 'duck' && U[target.kind].hero) { D.heroRest = D.heroRest || {}; D.heroRest[target.kind] = now() + heroRestMs(target.lv || 1); toast('💫 ' + U[target.kind].name + ' หมดแรง ต้องพักฟื้นก่อนบุกครั้งหน้า'); if (typeof raidBar === 'function') raidBar(); }
       if (target.side === 'duck' && U[target.kind].split) spawnAround(target, U[target.kind].split, 6, 1.0);
       sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
   }
 }
+var TURRET_SFX = { slingshot: 'twang', boxtower: 'pew', mortar: 'cooker', watergun: 'spray', chili: 'flame' };
+var LAND_SFX = { rock: 'stone', egg: 'boom', water: 'water', chili: 'sizzle', tomato: 'squish', cracker: 'cracker', pebble: 'thud', feather: 'thud', magic: 'chime' };
+var CRY = { fork: 'quackHi', thief: 'quackHi', digger: 'quackHi', duckling: 'peep', sling: 'quackHi', giant: 'quackLo', pot: 'quackLo', bomber: 'quackHi', chef: 'quack', nurse: 'quack',
+  witch: 'cackle', dog: 'bark', h_king: 'bark', egret: 'squawk', h_queen: 'squawk', pig: 'oink', mop: 'quackHi', plane: 'wee', kite: 'wee', prop: 'wee', fan: 'quackLo', fanlet: 'peep', balloon: 'quackHi', h_colonel: 'quackLo' };
+var ATK_SFX = { sling: 'pew', mop: 'whirl', plane: 'swoosh', kite: 'swoosh', fan: 'gust', fanlet: 'gust', giant: 'swing', pot: 'swing', h_colonel: 'swing', pig: 'oink', prop: 'swing' };
+var BIG_HIT = { giant: 1, pot: 1, egret: 1, dog: 1, pig: 1, cat_king: 1 };
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
   var tx = to.k ? center(to).x : to.x, ty = to.k ? center(to).y : to.y, d = Math.hypot(tx - sx, ty - sy);
   var tz = to.k ? 0 : airAlt(to) * .9; sz = (sz || .8) + (from && !from.k ? airAlt(from) * .85 : 0);
   R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
+  muzzleFx(kind, sx, sy, sz, from);
 }
 function troopTick(t, dt) {
   if (t.dead) return;
   t.cool -= dt; t.moving = false;
   if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; sfx(pd.kind === 'bite' ? 'bite' : pd.kind === 'smash' || pd.kind === 'spin' ? 'smash' : 'stab');
-    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; if (R.fx.length < 160) R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
+    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; if (R.fx.length < 160) R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind });
+    meleeFx(pd.kind, (pc.x + t.x * 2) / 3, (pc.y + t.y * 2) / 3, t, BIG_HIT[t.kind] || (t.side === 'duck' && U[t.kind].hero)); }
   if (t.side === 'cat') return catTick(t, dt);
   var u = U[t.kind];
   if (u.pref === 'heal') { // nurse: follow and heal the most hurt duck nearby
@@ -243,7 +251,7 @@ function digTick(t, u, dt) {
 // wall-breaker duck: one big bang that wrecks walls (x40) and nearby buildings, and the duck with it
 function blast(t, u, dmg) {
   R.buildings.forEach(function (b) { if (!b.dead && rectDist(t.x, t.y, b) <= u.splash) damage(b, dmg, t); });
-  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .9, max: .9, size: 1.4 }); sfx('cracker'); sfx('crash');
+  R.fx.push({ t: 'boom', x: t.x, y: t.y, life: .9, max: .9, size: 1.4 }); sfx('cracker'); sfx('crash'); impactFx('cracker', t.x, t.y); shake(5);
   t.hp = 0; t.dead = true; t.deadAt = now();
 }
 // mop duck: the spin hits every building and cat around it
@@ -265,6 +273,8 @@ function step(t, x, y, speed, dt) {
 }
 function attack(t, target, u) {
   if (t.cool > 0) return; var T = R.now || now(); t.cool = u.rate; t.atk = T;
+  if (t.side === 'duck' && Math.random() < .45) sfx(CRY[t.kind] || 'quack');   // a war cry with the swing (the sound system keeps the crowd from getting noisy)
+  if (t.side === 'duck' && ATK_SFX[t.kind]) sfx(ATK_SFX[t.kind]);
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind, t.lv);
   if (t.rage) dmg *= 1.5;
   if (t.side === 'duck') {
@@ -298,7 +308,7 @@ function turretTick(b, dt) {
   var want = Math.atan2(target.y - c.y, target.x - c.x), diff = Math.atan2(Math.sin(want - b.aim), Math.cos(want - b.aim));
   b.aim += clamp(diff, -6 * dt, 6 * dt);
   if (b.cool <= 0 && Math.abs(diff) < .35) {
-    b.cool = d.rate; b.fire = T; sfx(d.shot === 'egg' ? 'egg' : d.shot === 'water' ? 'water' : 'shot');
+    b.cool = d.rate; b.fire = T; sfx(TURRET_SFX[b.k] || 'shot');
     shoot(b, target, d.shot, grow(d.dmg, lv, 1.17), d.splash, d.shot === 'egg' ? 6 : 12, c.x + Math.cos(b.aim) * .6, c.y + Math.sin(b.aim) * .6, 1.2);
   }
 }
@@ -309,8 +319,8 @@ function shotTick(s, dt) {
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
-    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
-  else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
+    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); impactFx(s.kind, s.tx, s.ty); sfx(LAND_SFX[s.kind] || 'splat'); }
+  else if (s.target) { sfx(LAND_SFX[s.kind] || 'thud'); impactFx(s.kind, s.tx, s.ty); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }
 // soft separation so ducks don't stack on one spot: a 1-tile bucket grid, so each duck only checks its neighbours

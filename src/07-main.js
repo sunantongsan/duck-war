@@ -75,6 +75,7 @@ function draw(dt) {
     R.buildings.forEach(function (b) { if (!b.dead && b.hp < b.max && b.k !== 'wall') { var c = center(b); hpBar(c.x, c.y, B[b.k].size * 1.3, b.hp / b.max, '#7be36a'); } });
     R.shots.forEach(drawShot); R.fx = R.fx.filter(function (f) { return drawFx(f, dt); });
   }
+  if (PARTS.length || WORDS.length || SHAKE.on) drawParts(dt || 0);
 }
 function boot() {
   D = migrateSave(loadSave() || newGame()); if (TEST && !D.testCoins) { D.res.coin = Math.max(D.res.coin, 1000000); D.testCoins = 1; }   // test builds: 1M duck coins for trying upgrades

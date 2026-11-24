@@ -72,12 +72,42 @@ var SFX = {
   horn: function () { [[392, 0], [392, .18], [523, .36]].forEach(function (n) { tone({ f: n[0], type: 'sawtooth', vol: .1, a: .02, d: n[1] === .36 ? .55 : .14, at: n[1], bp: 1200, q: 1 }); }); },
   win: function () { [523, 659, 784, 1046, 784, 1046].forEach(function (f, i) { tone({ f: f, type: 'triangle', vol: .17, d: i === 5 ? .6 : .13, at: i * .12 }); }); quack(.8, 1.1, .2); quack(.95, 1.2, .2); },
   lose: function () { [392, 370, 349, 262].forEach(function (f, i) { tone({ f: f, type: 'triangle', vol: .15, d: i === 3 ? .7 : .22, at: i * .25, vib: i === 3 ? 6 : 0, vibAmt: 6 }); }); },
+  // ---------- duck war cries ----------
+  quackHi: function () { var p = 1.15 + Math.random() * .3; quack(0, p, .17); if (Math.random() < .4) quack(.1, p * 1.06, .13); },
+  quackLo: function () { var p = .62 + Math.random() * .1; quack(0, p, .26); tone({ f: 110, f2: 80, type: 'sine', vol: .12, d: .15 }); },
+  peep: function () { tone({ f: 1900, f2: 2500, type: 'sine', vol: .07, d: .06 }); tone({ f: 2100, f2: 2700, type: 'sine', vol: .06, d: .05, at: .08 }); },
+  cackle: function () { for (var i = 0; i < 4; i++) tone({ f: 900 - i * 60, f2: 700 - i * 60, type: 'sawtooth', vol: .07, d: .06, at: i * .085, bp: 1600, q: 4 }); },
+  bark: function () { tone({ f: 420, f2: 230, type: 'sawtooth', vol: .2, a: .01, d: .11, bp: 900, q: 2 }); noise({ type: 'bandpass', f: 700, q: 1.5, vol: .12, d: .08 }); if (Math.random() < .5) tone({ f: 460, f2: 250, type: 'sawtooth', vol: .16, d: .1, at: .17, bp: 900, q: 2 }); },
+  squawk: function () { tone({ f: 1300, f2: 700, type: 'sawtooth', vol: .14, a: .01, d: .2, bp: 1800, q: 3, vib: 25, vibAmt: 80 }); },
+  oink: function () { tone({ f: 260, f2: 200, type: 'sawtooth', vol: .16, a: .02, d: .14, bp: 600, q: 4, vib: 30, vibAmt: 25 }); },
+  wee: function () { tone({ f: 900, f2: 1600, type: 'triangle', vol: .08, a: .03, d: .25, vib: 9, vibAmt: 40 }); },
+  // ---------- duck weapons ----------
+  pew: function () { tone({ f: 900, f2: 300, type: 'triangle', vol: .09, d: .09 }); noise({ type: 'highpass', f: 3000, vol: .05, d: .03 }); },
+  whirl: function () { noise({ type: 'bandpass', f: 500, f2: 2400, q: 2, vol: .16, a: .05, d: .3 }); noise({ type: 'bandpass', f: 2400, f2: 600, q: 2, vol: .12, a: .02, d: .25, at: .3 }); },
+  swoosh: function () { noise({ type: 'bandpass', f: 2600, f2: 500, q: 1.5, vol: .16, a: .04, d: .28 }); },
+  gust: function () { noise({ type: 'lowpass', f: 900, f2: 300, vol: .18, a: .08, d: .4 }); },
+  swing: function () { noise({ type: 'bandpass', f: 400, f2: 1800, q: 1.2, vol: .14, a: .03, d: .14 }); },
+  // ---------- defenses ----------
+  twang: function () { tone({ f: 180, f2: 120, type: 'sawtooth', vol: .14, a: .003, d: .3, vib: 22, vibAmt: 18, bp: 700, q: 2 }); noise({ type: 'bandpass', f: 1800, q: 2, vol: .12, d: .05 }); tone({ f: 70, f2: 45, type: 'sine', vol: .25, d: .12 }); },
+  cooker: function () { noise({ type: 'highpass', f: 2500, vol: .22, a: .01, d: .35 }); tone({ f: 120, f2: 50, type: 'sine', vol: .45, d: .2, at: .02 }); noise({ type: 'lowpass', f: 500, vol: .2, d: .12, at: .02 }); tone({ f: 1900, f2: 2100, type: 'sine', vol: .05, d: .25, at: .05 }); },
+  spray: function () { noise({ type: 'bandpass', f: 3200, f2: 1800, q: 1.5, vol: .16, a: .02, d: .3 }); tone({ f: 200, f2: 140, type: 'sine', vol: .12, d: .1 }); },
+  flame: function () { noise({ type: 'bandpass', f: 400, f2: 1600, q: .7, vol: .3, a: .04, d: .35 }); for (var i = 0; i < 4; i++) noise({ type: 'highpass', f: 4000, vol: .06, d: .02, at: .05 + Math.random() * .25 }); },
+  // ---------- impacts ----------
+  stone: function () { tone({ f: 160, f2: 70, type: 'sine', vol: .32, d: .12 }); noise({ type: 'bandpass', f: 1200, q: 1.5, vol: .2, d: .07 }); for (var i = 0; i < 2; i++) tone({ f: 600 + Math.random() * 600, type: 'triangle', vol: .05, d: .04, at: .07 + i * .06 }); },
+  boom: function () { tone({ f: 110, f2: 32, type: 'sine', vol: .6, d: .55 }); noise({ type: 'lowpass', f: 1800, f2: 120, vol: .45, a: .005, d: .6 }); noise({ type: 'highpass', f: 3000, vol: .12, d: .08 }); },
+  sizzle: function () { noise({ type: 'highpass', f: 4500, vol: .14, a: .02, d: .4 }); noise({ type: 'lowpass', f: 600, f2: 200, vol: .18, d: .15 }); },
+  squish: function () { noise({ type: 'lowpass', f: 1500, f2: 250, vol: .32, d: .22 }); tone({ f: 260, f2: 90, type: 'sine', vol: .22, d: .18 }); tone({ f: 900, f2: 1300, type: 'sine', vol: .05, d: .08, at: .12 }); },
+  chime: function () { [1568, 2093].forEach(function (f, i) { tone({ f: f, type: 'sine', vol: .07, d: .2, at: i * .05 }); }); },
   error: function () { tone({ f: 220, type: 'square', vol: .08, d: .12 }); tone({ f: 180, type: 'square', vol: .08, d: .16, at: .12 }); }
 };
-var SFX_GAP = { quack: 90, deploy: 70, stab: 60, smash: 80, bite: 80, shot: 50, fire: 120, egg: 90, water: 60, thud: 50, wall: 80, duckdie: 150, meow: 400, dig: 250, heal: 300, hiss: 300 };
+var SFX_GAP = { quackHi: 140, quackLo: 220, peep: 150, cackle: 500, bark: 260, squawk: 300, oink: 300, wee: 250, pew: 70, whirl: 300, swoosh: 160, gust: 300, swing: 90,
+  twang: 90, cooker: 300, spray: 140, flame: 180, stone: 80, boom: 160, sizzle: 200, squish: 120, chime: 160, crash: 120, cracker: 90, quack: 90, deploy: 70, stab: 60, smash: 80, bite: 80, shot: 50, fire: 120, egg: 90, water: 60, thud: 50, wall: 80, duckdie: 150, meow: 400, dig: 250, heal: 300, hiss: 300 };
+var SFX_MUST = { crash: 1, boom: 1, win: 1, lose: 1, horn: 1, tap: 1, done: 1, coin: 1, error: 1, colonel: 1, build: 1 };
 function sfx(name) {
   if (!SND.on) return; var c = audio(); if (!c || c.state !== 'running' || !SFX[name]) return;
-  var t = performance.now(); if (t - (SND.last[name] || 0) < (SFX_GAP[name] || 30)) return; SND.last[name] = t;
+  var t = performance.now(); if (t - (SND.last[name] || 0) < (SFX_GAP[name] || 30)) return;
+  var Q = SND.recent || (SND.recent = []); while (Q.length && t - Q[0] > 150) Q.shift();
+  if (Q.length >= 9 && !SFX_MUST[name]) return; Q.push(t); SND.last[name] = t;
   try { SFX[name](); } catch (e) {}
 }
 function setSound(on) { SND.on = on; if (SND.sfxBus) SND.sfxBus.gain.value = on ? 1 : 0; soundSave(); }
