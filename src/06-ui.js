@@ -146,7 +146,17 @@ function attackMenu() {
     body.appendChild(grid);
   });
 }
-function enterRaid(n) { startRaid(n); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
+// start unpacking every picture this raid can show (troops, their summons, heroes, cats, the cat base) before it is needed
+function raidPreload() {
+  var files = [], troop = function (k) { var u = U[k] || CATS[k]; if (u && ART.troops[u.art]) files.push(ART.troops[u.art].file); if (U[k]) { if (U[k].split) troop(U[k].split); if (U[k].summon) troop(U[k].summon); } };
+  Object.keys(R.army).forEach(function (k) { if (R.army[k] > 0) troop(k); }); Object.keys(R.heroes).forEach(troop);
+  R.troops.forEach(function (t) { troop(t.kind); });
+  R.buildings.forEach(function (b) { var d = B[b.k], st = stageOf(Math.max(1, b.lv)) - 1;
+    if (d.turret && ART.turrets[d.turret]) files.push(ART.turrets[d.turret].stages[st].file);
+    else if (d.art && ART.buildings[d.art]) { var ab = ART.buildings[d.art]; files.push(ab.stages[st].file); if (ab.rubble) files.push(ab.rubble.file); } });
+  preload(files);
+}
+function enterRaid(n) { startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); raidBar(); hud(); dirty = true; }
 function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';

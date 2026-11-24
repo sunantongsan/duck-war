@@ -72,7 +72,7 @@ function deploy(x, y) {
   var lv = hero ? hero.lv : 1, t = { side: 'duck', kind: k, x: x, y: y, hp: uHp(k, lv), max: uHp(k, lv), lv: lv, cool: 0.2, dir: 2, born: now() };
   if (hero) { hero.state = 'out'; hero.unit = t; } else R.army[k]--;
   R.deployed++; R.started = true; R.troops.push(t);
-  R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5 });
+  if (hero || R.fx.length < 120) R.fx.push({ t: 'puff', x: x, y: y, life: .5, max: .5, small: !hero && R.ducks && R.ducks.length > 60 });
   if (hero) { sfx(k === 'h_colonel' ? 'colonel' : k === 'h_king' ? 'bite' : 'heal'); buzz('medium'); toast((k === 'h_colonel' ? '🎖 ' : '👑 ') + U[k].name + ' ลงสนาม! แตะการ์ดอีกครั้งเพื่อใช้สกิล'); R.pick = nextPick(); return true; }
   if (!(R.army[k] > 0)) R.pick = nextPick();
   sfx('deploy'); buzz('light'); return true;
@@ -103,15 +103,20 @@ function findPath(t, target, range) {
   var sx = clamp(Math.floor(t.x), 0, MAP - 1), sy = clamp(Math.floor(t.y), 0, MAP - 1);
   var key = (sy * MAP + sx) + ':' + target.id + ':' + range;
   if (!R.routeCache.has(key)) {
-    if (R.routeCache.size >= 128) R.routeCache.clear();
+    if (R.pathBudget !== undefined && R.pathBudget <= 0) return undefined;   // enough searches this frame: ask again next frame (a big crowd re-routing at once used to freeze the game)
+    if (R.pathBudget !== undefined) R.pathBudget--;
+    if (R.routeCache.size >= 512) R.routeCache.clear();
     R.routeCache.set(key, searchPath(sx, sy, target, range));
   }
   var route = R.routeCache.get(key);
   return route && route.slice(); // troops advance independently through shared waypoints
 }
+var NDX = [1, -1, 0, 0, 1, 1, -1, -1], NDY = [0, 0, 1, -1, 1, -1, 1, -1], PATHBUF = null;
+function wallBand(b) { return Math.ceil(b.hp / b.max * 4); }   // walls cost less to cross as they crumble, in 4 steps
 function searchPath(sx, sy, target, range) {
   var g = grid(), N = MAP * MAP;
-  var cost = new Float32Array(N).fill(1e9), prev = new Int32Array(N).fill(-1), done = new Uint8Array(N), hk = [], hn = [];   // binary heap of (cost, cell)
+  if (!PATHBUF || PATHBUF.n !== N) PATHBUF = { n: N, cost: new Float32Array(N), prev: new Int32Array(N), done: new Uint8Array(N) };
+  var cost = PATHBUF.cost.fill(1e9), prev = PATHBUF.prev.fill(-1), done = PATHBUF.done.fill(0), hk = [], hn = [];   // binary heap of (cost, cell)
   function push(n, k) { hk.push(k); hn.push(n); var i = hk.length - 1; while (i) { var p = (i - 1) >> 1; if (hk[p] <= k) break; hk[i] = hk[p]; hn[i] = hn[p]; i = p; } hk[i] = k; hn[i] = n; }
   function pop() { var top = hn[0], lk = hk.pop(), ln = hn.pop(), L = hk.length; if (L) { var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, m = i, mk = lk;
       if (l < L && hk[l] < mk) { m = l; mk = hk[l]; } if (r < L && hk[r] < mk) m = r; if (m === i) break; hk[i] = hk[m]; hn[i] = hn[m]; i = m; } hk[i] = lk; hn[i] = ln; } return top; }
@@ -122,9 +127,9 @@ function searchPath(sx, sy, target, range) {
     var cx = c % MAP, cy = (c / MAP) | 0;
     if (rectDist(cx + .5, cy + .5, target) <= range + .45) { goal = c; break; }
     for (var d = 0; d < 8; d++) {
-      var nx = cx + [1, -1, 0, 0, 1, 1, -1, -1][d], ny = cy + [0, 0, 1, -1, 1, -1, 1, -1][d]; if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) continue;
+      var nx = cx + NDX[d], ny = cy + NDY[d]; if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) continue;
       var n = ny * MAP + nx, occ = g[n], step = d < 4 ? 1 : 1.414;
-      if (occ) { var ob = R.buildings[occ - 1]; if (ob === target) continue; if (ob.k !== 'wall') continue; step += 6 + ob.hp / 60; }
+      if (occ) { var ob = R.buildings[occ - 1]; if (ob === target) continue; if (ob.k !== 'wall') continue; step += 6 + ob.max * wallBand(ob) / 4 / 60; }
       if (d >= 4 && (g[cy * MAP + nx] && R.buildings[g[cy * MAP + nx] - 1].k !== 'wall' || g[ny * MAP + cx] && R.buildings[g[ny * MAP + cx] - 1].k !== 'wall')) continue;
       if (cost[c] + step < cost[n]) { cost[n] = cost[c] + step; prev[n] = c; push(n, cost[n]); }
     }
@@ -147,11 +152,12 @@ function damage(target, amount, from) {
   if (target.dead) return;
   if (from && U[from.kind] && U[from.kind].wallBonus && target.k === 'wall') amount *= U[from.kind].wallBonus;
   if (from && U[from.kind] && U[from.kind].resBonus && target.k && /store|make/.test(B[target.k].kind)) amount *= U[from.kind].resBonus;
-  if (target.k === 'wall') R.routeCache.clear(); // wall HP changes the cost of crossing it
-  target.hp -= amount; target.hitAt = now();
+  var band = target.k === 'wall' ? wallBand(target) : 0;
+  target.hp -= amount; target.hitAt = R.now || now();
+  if (target.k === 'wall' && target.hp > 0 && wallBand(target) !== band) R.routeCache.clear(); // a crumbling wall is cheaper to cross
   if (target.k) { // building: loot and debris
     if (target.loot) ['honey', 'veggie', 'syrup'].forEach(function (r) { var v = target.loot[r] || 0, give = Math.min(v, v * amount / target.max * 1.0001); target.loot[r] -= give; R.taken[r] += give; });
-    var c = center(target); for (var i = 0; i < 3; i++) R.fx.push({ t: 'chip', x: c.x + (Math.random() - .5), y: c.y + (Math.random() - .5), z: .6, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, vz: 2 + Math.random() * 2, life: .9, max: .9, color: B[target.k].kind === 'wall' ? '#b98552' : ['#c58a52', '#f2e7c9', '#9b6b3a'][i % 3] });
+    var c = center(target), nChip = R.fx.length < 90 ? 3 : R.fx.length < 180 ? 1 : 0; for (var i = 0; i < nChip; i++) R.fx.push({ t: 'chip', x: c.x + (Math.random() - .5), y: c.y + (Math.random() - .5), z: .6, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, vz: 2 + Math.random() * 2, life: .9, max: .9, color: B[target.k].kind === 'wall' ? '#b98552' : ['#c58a52', '#f2e7c9', '#9b6b3a'][i % 3] });
   }
   if (target.hp <= 0) {
     target.hp = 0; target.dead = true; target.deadAt = now();
@@ -172,12 +178,13 @@ function troopTick(t, dt) {
   if (t.dead) return;
   t.cool -= dt; t.moving = false;
   if (t.pend && (t.pend.left -= dt) <= 0) { var pd = t.pend; t.pend = null; sfx(pd.kind === 'bite' ? 'bite' : pd.kind === 'smash' || pd.kind === 'spin' ? 'smash' : 'stab');
-    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
+    if (pd.kind === 'spin') spinHit(t, pd.dmg); else damage(pd.target, pd.dmg, t); var pc = pd.target.k ? center(pd.target) : pd.target; if (R.fx.length < 160) R.fx.push({ t: 'hit', x: (pc.x + t.x) / 2, y: (pc.y + t.y) / 2, life: .3, max: .3, kind: pd.kind }); }
   if (t.side === 'cat') return catTick(t, dt);
   var u = U[t.kind];
   if (u.pref === 'heal') { // nurse: follow and heal the most hurt duck nearby
-    var hurt = alive(R.troops).filter(function (o) { return o.side === 'duck' && o !== t && o.hp < o.max; }).sort(function (a, b) { return a.hp / a.max - b.hp / b.max; })[0];
-    var follow = hurt || alive(R.troops).filter(function (o) { return o.side === 'duck' && o !== t; })[0];
+    var hurt = null, follow = null, ducks = R.ducks || R.troops;
+    for (var hi = 0; hi < ducks.length; hi++) { var ho = ducks[hi]; if (ho === t || ho.dead || ho.side !== 'duck') continue; if (!follow) follow = ho; if (ho.hp < ho.max && (!hurt || ho.hp / ho.max < hurt.hp / hurt.max)) hurt = ho; }
+    follow = hurt || follow;
     if (!follow) return; var dd = Math.hypot(follow.x - t.x, follow.y - t.y);
     if (dd > u.range * .8) return step(t, follow.x, follow.y, u.speed, dt);
     if (hurt && t.cool <= 0) { t.cool = u.rate; t.atk = now(); alive(R.troops).forEach(function (o) { if (o.side === 'duck' && Math.hypot(o.x - hurt.x, o.y - hurt.y) < 1.5) o.hp = Math.min(o.max, o.hp + u.heal); }); sfx('heal'); R.fx.push({ t: 'heal', x: hurt.x, y: hurt.y, life: .6, max: .6 }); }
@@ -189,7 +196,8 @@ function troopTick(t, dt) {
   if (u.burrow) return digTick(t, u, dt);
   if (u.air) return flyTick(t, u, dt);
   // fight back against a cat guard close by
-  var cat = u.hit === 'blast' ? null : R.troops.find(function (o) { return o.side === 'cat' && !o.dead && Math.hypot(o.x - t.x, o.y - t.y) < Math.max(1.4, u.range + .6); });
+  var cat = null; if (u.hit !== 'blast') { var cr = Math.max(1.4, u.range + .6), cats = R.cats || R.troops;
+    for (var ci = 0; ci < cats.length; ci++) { var co = cats[ci]; if (co.side === 'cat' && !co.dead && Math.abs(co.x - t.x) < cr && Math.hypot(co.x - t.x, co.y - t.y) < cr) { cat = co; break; } } }
   if (cat) { var cd = Math.hypot(cat.x - t.x, cat.y - t.y); t.face = Math.atan2(cat.y - t.y, cat.x - t.x);
     if (cd > u.range + .45) return step(t, cat.x, cat.y, u.speed, dt); return attack(t, cat, u); }
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); t.path = t.target ? findPath(t, t.target, u.range) : null; t.wall = null; }
@@ -197,7 +205,7 @@ function troopTick(t, dt) {
   if (t.wall && !t.wall.dead) { t.face = Math.atan2(center(t.wall).y - t.y, center(t.wall).x - t.x); return attack(t, t.wall, u); }
   if (t.wall && t.wall.dead) { t.wall = null; t.path = findPath(t, t.target, u.range); }
   if (rectDist(t.x, t.y, t.target) <= u.range + .12) { var c = center(t.target); t.face = Math.atan2(c.y - t.y, c.x - t.x); return attack(t, t.target, u); }
-  if (!t.path || !t.path.length) { t.path = findPath(t, t.target, u.range); if (!t.path) { t.target = null; return; } }
+  if (!t.path || !t.path.length) { var np = findPath(t, t.target, u.range); if (np === undefined) return; t.path = np; if (!np) { t.target = null; return; } }
   var wp = t.path[0];
   if (!wp) { // already in the goal cell: walk the last bit straight to the nearest edge of the building
     var s0 = B[t.target.k].size; return step(t, clamp(t.x, t.target.x, t.target.x + s0), clamp(t.y, t.target.y, t.target.y + s0), u.speed, dt); }
@@ -214,7 +222,7 @@ function troopTick(t, dt) {
 // Flyers: straight over walls and buildings to the target; only anti-air defenses can hit them, cats can't reach
 function flyTick(t, u, dt) {
   if (!t.target || t.target.dead) { t.target = chooseTarget(t); if (!t.target) return; }
-  if (u.rage) t.rage = !R.troops.some(function (o) { return o !== t && !o.dead && o.side === 'duck' && U[o.kind].air && Math.hypot(o.x - t.x, o.y - t.y) < 4; });
+  if (u.rage) t.rage = !(R.ducks || R.troops).some(function (o) { return o !== t && !o.dead && o.side === 'duck' && U[o.kind].air && Math.hypot(o.x - t.x, o.y - t.y) < 4; });
   var c = center(t.target), d = rectDist(t.x, t.y, t.target);
   if (d > u.range + .12) { var s = B[t.target.k].size; return step(t, u.range < 1 ? c.x : clamp(t.x, t.target.x, t.target.x + s), u.range < 1 ? c.y : clamp(t.y, t.target.y, t.target.y + s), u.speed * (t.rage ? 1.25 : 1), dt); }
   t.face = Math.atan2(c.y - t.y, c.x - t.x); attack(t, t.target, u);
@@ -251,15 +259,15 @@ function spawnAround(t, kind, n, r) { // witch's ducklings, the fan's little fan
 }
 function step(t, x, y, speed, dt) {
   var dx = x - t.x, dy = y - t.y, d = Math.hypot(dx, dy); if (d < 1e-3) return;
-  if (t.fast > now()) speed *= 1.4;
+  if (t.fast > (R.now || now())) speed *= 1.4;
   var m = Math.min(d, speed * dt); t.x += dx / d * m; t.y += dy / d * m; t.moving = true; t.face = Math.atan2(dy, dx); t.walk = (t.walk || 0) + m;
 }
 function attack(t, target, u) {
-  if (t.cool > 0) return; t.cool = u.rate; t.atk = now();
+  if (t.cool > 0) return; var T = R.now || now(); t.cool = u.rate; t.atk = T;
   var dmg = t.side === 'cat' ? u.dmg : uDmg(t.kind, t.lv);
   if (t.rage) dmg *= 1.5;
   if (t.side === 'duck') {
-    if (t.fast > now()) dmg *= t.invis > now() ? 2 : 1.4;
+    if (t.fast > T) dmg *= t.invis > T ? 2 : 1.4;
     if (!u.hero && R.heroes.h_colonel && R.heroes.h_colonel.unit) { var col = R.heroes.h_colonel.unit; if (!col.dead && Math.hypot(col.x - t.x, col.y - t.y) < U.h_colonel.aura) dmg *= 1.25; }   // the colonel leads: ducks by his side fight harder
   }
   if (u.shot === 'feather') { sfx('shot'); shoot(t, target, 'feather', dmg, 0, 11, t.x, t.y, 1.4); return; }
@@ -270,8 +278,8 @@ function attack(t, target, u) {
   t.pend = { target: target, dmg: dmg, left: .23, kind: u.hit }; if (t.side === 'cat') sfx('hiss');   // the blow lands when the swing does
 }
 function catTick(t, dt) {
-  var c = CATS[t.kind], foe = null, fd = 4.5;
-  alive(R.troops).forEach(function (o) { if (o.side === 'duck' && !o.under && !U[o.kind].air && !(o.invis > now())) { var d = Math.hypot(o.x - t.x, o.y - t.y); if (d < fd) { fd = d; foe = o; } } });
+  var c = CATS[t.kind], foe = null, fd = 4.5, T = R.now || now(), ducks = R.ducks || R.troops;
+  for (var i = 0; i < ducks.length; i++) { var o = ducks[i]; if (o.dead || o.side !== 'duck' || o.under || U[o.kind].air || o.invis > T) continue; var dx = o.x - t.x, dy = o.y - t.y; if (Math.abs(dx) >= fd || Math.abs(dy) >= fd) continue; var d = Math.sqrt(dx * dx + dy * dy); if (d < fd) { fd = d; foe = o; } }
   if (foe) { t.face = Math.atan2(foe.y - t.y, foe.x - t.x); if (fd > c.range + .45) return step(t, foe.x, foe.y, c.speed, dt); return attack(t, foe, c); }
   if (!t.stroll || Math.hypot(t.stroll.x - t.x, t.stroll.y - t.y) < .1) { t.stroll = null;
     for (var i = 0; i < 12 && !t.stroll; i++) { var g = { x: t.home.x + (Math.random() - .5) * 7, y: t.home.y + (Math.random() - .5) * 7 }; if (!inBuilding(g.x, g.y)) t.stroll = g; }
@@ -281,14 +289,14 @@ function catTick(t, dt) {
 }
 function turretTick(b, dt) {
   var d = B[b.k]; if (d.kind !== 'defense' || b.dead) return; b.cool -= dt;
-  var c = center(b), lv = b.lv, range = d.range, target = null, best = 1e9;
-  alive(R.troops).forEach(function (o) { if (o.side !== 'duck' || o.under || o.invis > now()) return; var air = !!U[o.kind].air; if (air ? !d.air : !d.ground) return;
-    var dd = Math.hypot(o.x - c.x, o.y - c.y); if (dd <= range && dd >= (d.minRange || 0) && dd < best) { best = dd; target = o; } });
+  var c = center(b), lv = b.lv, range = d.range, r2 = range * range, m2 = (d.minRange || 0) * (d.minRange || 0), target = null, best = 1e9, T = R.now || now(), ducks = R.ducks || R.troops;
+  for (var i = 0; i < ducks.length; i++) { var o = ducks[i]; if (o.dead || o.side !== 'duck' || o.under || o.invis > T) continue; var air = !!U[o.kind].air; if (air ? !d.air : !d.ground) continue;
+    var dx = o.x - c.x, dy = o.y - c.y, dd = dx * dx + dy * dy; if (dd <= r2 && dd >= m2 && dd < best) { best = dd; target = o; } }
   if (!target) return;
   var want = Math.atan2(target.y - c.y, target.x - c.x), diff = Math.atan2(Math.sin(want - b.aim), Math.cos(want - b.aim));
   b.aim += clamp(diff, -6 * dt, 6 * dt);
   if (b.cool <= 0 && Math.abs(diff) < .35) {
-    b.cool = d.rate; b.fire = now(); sfx(d.shot === 'egg' ? 'egg' : d.shot === 'water' ? 'water' : 'shot');
+    b.cool = d.rate; b.fire = T; sfx(d.shot === 'egg' ? 'egg' : d.shot === 'water' ? 'water' : 'shot');
     shoot(b, target, d.shot, grow(d.dmg, lv, 1.17), d.splash, d.shot === 'egg' ? 6 : 12, c.x + Math.cos(b.aim) * .6, c.y + Math.sin(b.aim) * .6, 1.2);
   }
 }
@@ -300,8 +308,29 @@ function shotTick(s, dt) {
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
     R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: .5, max: .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash }); sfx(s.kind === 'cracker' ? 'cracker' : 'splat'); }
-  else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
+  else if (s.target) { sfx('thud'); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
+}
+// soft separation so ducks don't stack on one spot: a 1-tile bucket grid, so each duck only checks its neighbours
+// (all pairs was 65,000 checks a frame with 360 ducks; push radii add up to at most 1 tile)
+var SEP = null;
+function separate() {
+  var live = alive(R.troops), n = live.length, W = MAP + 2;
+  if (!SEP || SEP.W !== W) SEP = { W: W, head: new Int32Array(W * W), next: new Int32Array(0), cell: new Int32Array(0), rad: new Float32Array(0) };
+  if (SEP.next.length < n) { SEP.next = new Int32Array(n * 2); SEP.cell = new Int32Array(n * 2); SEP.rad = new Float32Array(n * 2); }
+  var head = SEP.head.fill(-1), next = SEP.next, cell = SEP.cell, rad = SEP.rad;
+  for (var i = 0; i < n; i++) { var o = live[i], cx = clamp(Math.floor(o.x) + 1, 0, W - 1), cy = clamp(Math.floor(o.y) + 1, 0, W - 1), c = cy * W + cx;
+    cell[i] = c; rad[i] = big(o); next[i] = head[c]; head[c] = i; }
+  for (i = 0; i < n; i++) {
+    var a = live[i], ac = cell[i], ax = ac % W, ay = (ac / W) | 0;
+    for (var yy = ay - 1; yy <= ay + 1; yy++) { if (yy < 0 || yy >= W) continue;
+      for (var xx = ax - 1; xx <= ax + 1; xx++) { if (xx < 0 || xx >= W) continue;
+        for (var j = head[yy * W + xx]; j >= 0; j = next[j]) { if (j <= i) continue;
+          var b = live[j], dx = b.x - a.x, dy = b.y - a.y, squared = dx * dx + dy * dy, radius = rad[i] + rad[j];
+          if (squared === 0 || squared >= radius * radius) continue;
+          var distance = Math.sqrt(squared), push = (radius - distance) / (4 * distance);
+          a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push; } } }
+  }
 }
 function big(o) { var u = U[o.kind] || CATS[o.kind] || {}; return u.hero ? .5 : u.space >= 5 ? .35 : .2; }
 function destruction() {
@@ -311,24 +340,18 @@ function destruction() {
 function raidTick(dt) {
   if (!R || R.over) return;
   if (R.started) R.time -= dt;
-  R.troops.forEach(function (t) { troopTick(t, dt); });
-  R.buildings.forEach(function (b) { turretTick(b, dt); });
+  R.now = now(); R.pathBudget = 6;   // one clock read per frame; at most 6 new route searches per frame
+  // bodies stay ~2 s for the fall-and-dissolve, then leave the list so a 360-duck raid doesn't keep looping over the fallen
+  if (R.troops.length > 40 && (!R.pruneAt || R.now > R.pruneAt)) { R.pruneAt = R.now + 500; R.troops = R.troops.filter(function (t) { return !t.dead || R.now - (t.deadAt || 0) < 2200; }); }
+  var ducks = [], cats = []; for (var q = 0; q < R.troops.length; q++) { var o = R.troops[q]; if (!o.dead) (o.side === 'cat' ? cats : ducks).push(o); }
+  R.ducks = ducks; R.cats = cats;
+  for (q = 0; q < R.troops.length; q++) troopTick(R.troops[q], dt);
+  for (q = 0; q < R.buildings.length; q++) turretTick(R.buildings[q], dt);
   R.shots = R.shots.filter(function (s) { return !shotTick(s, dt); });
-  // soft separation so ducks don't stack on one spot
-  var live = alive(R.troops), radii = live.map(big);
-  for (var i = 0; i < live.length; i++) {
-    var a = live[i];
-    for (var j = i + 1; j < live.length; j++) {
-      var b = live[j], dx = b.x - a.x, dy = b.y - a.y;
-      var squared = dx * dx + dy * dy, radius = radii[i] + radii[j];
-      if (squared === 0 || squared >= radius * radius) continue;
-      var distance = Math.sqrt(squared), push = (radius - distance) / (4 * distance);
-      a.x -= dx * push; a.y -= dy * push; b.x += dx * push; b.y += dy * push;
-    }
-  }
+  separate();
   var pct = destruction(), hqDead = R.buildings.some(function (b) { return b.k === 'hq' && b.dead; });
   R.stars = (pct >= .5 ? 1 : 0) + (hqDead ? 1 : 0) + (pct >= 1 ? 1 : 0); R.pct = pct;
-  var ducksLeft = alive(R.troops).some(function (t) { return t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; }) || HERO_KEYS.some(function (k) { return R.heroes[k] && R.heroes[k].state === 'ready'; });
+  var ducksLeft = R.ducks.some(function (t) { return !t.dead; }) || R.troops.some(function (t) { return !t.dead && t.side === 'duck'; }) || Object.keys(R.army).some(function (k) { return R.army[k] > 0; }) || HERO_KEYS.some(function (k) { return R.heroes[k] && R.heroes[k].state === 'ready'; });
   if (pct >= 1 || R.time <= 0 || (R.started && !ducksLeft)) endRaid();
 }
 function endRaid() {

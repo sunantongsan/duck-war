@@ -34,7 +34,7 @@ function frame(t) {
     raidTick(dt); raidHud();
     if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; dropTroop(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4); }
   }
-  draw(dt);
+  draw(dt); headWork(screen === 'raid');
   requestAnimationFrame(frame);
 }
 function rangeRing(b) {
@@ -59,6 +59,7 @@ function draw(dt) {
     tileDiamond(placing.x, placing.y, B[placing.k].size, pok ? 'rgba(120,255,140,.35)' : 'rgba(255,80,80,.35)', pok ? '#5fe07a' : '#ff5a5a'); }
   var movingSet = moving && screen === 'home' ? moving.items.map(function (i) { return i.b; }) : [], ghosts = moving && screen === 'home' ? moving.items.map(function (i) { return Object.assign({}, i.b, { x: i.x, y: i.y }); }) : [];
   if (moving && screen === 'home') sc = { buildings: D.buildings.filter(function (b) { return movingSet.indexOf(b) < 0; }).concat(ghosts) };   // walls join up with where the moved walls are now
+  buildWallSet(sc.buildings);
   // rubble lies flat on the ground: drawn first and faded, so ducks walk over it instead of under it
   sc.buildings.forEach(function (b) { if (b.dead && b.k !== 'wall') { ctx.globalAlpha = .62; drawBuilding(b, sc); ctx.globalAlpha = 1; } });
   sc.buildings.forEach(function (b) { if (b.dead || movingSet.indexOf(b) >= 0) return; var s = B[b.k].size; list.push({ d: b.x + b.y + s, f: function () { drawBuilding(b, sc); } }); });
@@ -85,6 +86,7 @@ function boot() {
   window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing) cancelPlace(); else if (moving) cancelMove(); else if (selected) selectBuilding(null); };
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
+  headPrepare();
   window.duckReady = true;
   requestAnimationFrame(frame);
 }

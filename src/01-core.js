@@ -31,9 +31,13 @@ function centerCamera(scale) {
 var IMG = {};
 function img(file) {
   var i = IMG[file]; if (i) return i;
-  i = IMG[file] = new Image(); i.onload = function () { dirty = true; }; i.src = 'assets/' + file; return i;
+  i = IMG[file] = new Image(); i.onload = function () { dirty = true; }; i.src = 'assets/' + file;
+  // unpack the picture off the main thread before its first draw: a big troop sheet unpacked mid-raid froze the game for a moment
+  if (typeof i.decode === 'function') { i.dec = false; i.decode().then(function () { i.dec = true; dirty = true; }, function () { i.dec = true; }); }
+  return i;
 }
-function ready(i) { return i && i.complete && i.naturalWidth > 0; }
+function ready(i) { return i && i.complete && i.naturalWidth > 0 && i.dec !== false; }
+function preload(files) { files.forEach(function (f) { if (f) img(f); }); }
 
 // ---------- input: one finger pans, two fingers zoom, a short touch is a tap ----------
 var pointers = new Map(), gesture = null, dirty = true;
