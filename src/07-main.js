@@ -87,6 +87,7 @@ function boot() {
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
   headPrepare(); sheetPrime(HERO_KEYS);   // the colonel walks the base, and all three heroes are ready for raids
+  if (D.ground === undefined) groundPicker(true);   // first start (or a save from before map looks): let the player pick a map
   window.duckReady = true;
   requestAnimationFrame(frame);
 }

@@ -214,7 +214,24 @@ function soundMenu() {
     var a = h('button', 'btn ' + (SND.on ? 'green' : ''), (SND.on ? '🔊' : '🔇') + ' เสียงเอฟเฟกต์ ' + (SND.on ? 'เปิด' : 'ปิด')); a.onclick = function () { setSound(!SND.on); soundMenu(); sfx('quack'); };
     var m = h('button', 'btn ' + (SND.music ? 'green' : ''), '🎵 เพลง ' + (SND.music ? 'เปิด' : 'ปิด')); m.onclick = function () { setMusic(!SND.music); soundMenu(); };
     row.appendChild(a); row.appendChild(m); body.appendChild(row);
+    var gr = h('div', 'p-row sound-row'), gb = h('button', 'btn', '🌳 พื้นแผนที่: ' + GROUNDS[D.ground || 0].name); gb.onclick = function () { groundPicker(false); }; gr.appendChild(gb); body.appendChild(gr);
   });
   $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
+}
+// ---------- map look: chosen on first start (and changeable later from the settings button) ----------
+function groundPicker(first) {
+  openSheet(first ? 'เลือกพื้นแผนที่ของฐานเป็ด' : 'เปลี่ยนพื้นแผนที่', function (body) {
+    if (first) body.appendChild(h('div', 'gp-note', 'เลือกได้ 1 แบบ เปลี่ยนทีหลังได้ที่ปุ่ม 🔊'));
+    var grid = h('div', 'gp-grid');
+    GROUNDS.forEach(function (T, i) {
+      var card = h('div', 'card gp-card' + ((D.ground || 0) === i && !first ? ' on' : ''));
+      var pic = groundPreview(i, 220, 124); pic.className = 'gp-pic'; card.appendChild(pic);
+      card.appendChild(h('b', '', T.name)); card.appendChild(h('small', '', T.desc));
+      card.onclick = function () { D.ground = i; writeSave(); closeSheet(); dirty = true; toast('พื้นแผนที่: ' + T.name); };
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  });
+  if (first) { var x = $('sheet').querySelector('.x'); if (x) x.onclick = function () { D.ground = 0; writeSave(); closeSheet(); dirty = true; }; }
 }
 document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button')) sfx('tap'); }, true);
