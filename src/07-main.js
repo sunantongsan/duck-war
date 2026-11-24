@@ -34,7 +34,7 @@ function frame(t) {
     raidTick(dt); raidHud();
     if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; dropTroop(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4); }
   }
-  draw(dt); headWork(screen === 'raid');
+  draw(dt); headWork(screen === 'raid'); sheetWork(screen === 'raid' ? 1 : 3);
   requestAnimationFrame(frame);
 }
 function rangeRing(b) {
@@ -86,7 +86,7 @@ function boot() {
   window.duckBack = function () { if ($('sheet').classList.contains('open')) closeSheet(); else if (placing) cancelPlace(); else if (moving) cancelMove(); else if (selected) selectBuilding(null); };
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
-  headPrepare();
+  headPrepare(); sheetPrime(HERO_KEYS);   // the colonel walks the base, and all three heroes are ready for raids
   window.duckReady = true;
   requestAnimationFrame(frame);
 }
