@@ -7,6 +7,7 @@
 import json, math, os, sys
 import numpy as np
 from PIL import Image, ImageFilter, ImageDraw
+from building_colors import paint_materials
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/duck'
 R45 = os.path.join(SRC, 'r45')
@@ -71,7 +72,8 @@ for key, src in STATIC.items():
         sf = fit_of(a[0], a[3], size)                       # every stage fills the same footprint: new shape, not a bigger building
         if fit is None: fit = sf
         if n == 3: fit3 = sf
-        stages.append(save_sprite(a[0], a[1], a[2], a[3] / sf, f'b_{key}_{n}', size))
+        painted = paint_materials(a[0], key, n)
+        stages.append(save_sprite(painted, a[1], a[2], a[3] / sf, f'b_{key}_{n}', size))
     if key == 'hq':
         p = os.path.join(R45, 'hq', 'hq3_rubble.png'); im = clean(Image.open(p).convert('RGBA')); F = im.size[0]; m = json.load(open(os.path.join(R45, 'hq', 'hq3.png_meta.json')))
         rub = save_sprite(im, m['ox'] * F, m['oy'] * F, m['ppu_frac'] * F / fit3, f'b_{key}_rubble', size)
@@ -119,13 +121,16 @@ for key, src in TURRETS.items():
             o = Image.new('RGBA', (CELL, CELL)); o.alpha_composite(c, ((CELL - c.width) // 2, CELL - c.height)); return o, (CELL - c.width) // 2, CELL - c.height
         sheet = Image.new('RGBA', (CELL * 6, CELL * 3)); tips = []
         for dgame in range(16):
-            hi = PICK[dgame]; c, offx, offy = cell(heads[hi]); sheet.alpha_composite(c, ((dgame % 6) * CELL, (dgame // 6) * CELL))
+            hi = PICK[dgame]
+            c, offx, offy = cell(heads[hi])
+            sheet.alpha_composite(paint_materials(c, key, n), ((dgame % 6) * CELL, (dgame // 6) * CELL))
             _, sx, sy = head_angle(hi); pts = np.argwhere(np.array(heads[hi].split()[3]) > 200)
             if len(pts):
                 cy, cx = pts.mean(0); q = pts[((pts[:, 1] - cx) * sx + (pts[:, 0] - cy) * sy).argmax()]
                 tips.append([round((q[1] - x0) * sc + offx, 1), round((q[0] - y0) * sc + offy, 1)])
             else: tips.append([CELL / 2, CELL / 2])
-        c, offx, offy = cell(base); sheet.alpha_composite(c, (4 * CELL, 2 * CELL))
+        c, offx, offy = cell(base)
+        sheet.alpha_composite(paint_materials(c, key, n, turret_base=True), (4 * CELL, 2 * CELL))
         c2, _, _ = cell(rub); sheet.alpha_composite(c2, (5 * CELL, 2 * CELL))
         name = f't_{key}_{n}'; sheet.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
         stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips, 'fit': round(sfit, 3)})
@@ -195,3 +200,4 @@ for key, src in [('fork', 'fork'), ('sling', 'sling'), ('giant', 'giant'), ('dig
 wel = os.path.join(ROOT, 'tools', 'art', 'welcome.png')
 if os.path.exists(wel): Image.open(wel).convert('RGB').save(os.path.join(OUT, 'welcome.webp'), 'WEBP', quality=86)
 print('ui done')
+
