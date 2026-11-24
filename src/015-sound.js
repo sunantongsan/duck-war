@@ -12,6 +12,7 @@ function audio() {
   SND.sfxBus = c.createGain(); SND.sfxBus.gain.value = SND.on ? 1 : 0; SND.sfxBus.connect(SND.master);
   SND.musicBus = c.createGain(); SND.musicBus.gain.value = SND.music ? .32 : 0; SND.musicBus.connect(SND.master);
   var n = c.sampleRate, b = c.createBuffer(1, n, n), d = b.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; SND.noiseBuf = b;
+  loadSamples(c);
   return c;
 }
 // browsers (and the Android WebView) only allow sound after a touch
@@ -38,6 +39,61 @@ function quack(at, pitch, vol) { // a cartoon quack: buzzy saw through two forma
   tone({ f: 560 * p, f2: 380 * p, type: 'sawtooth', vol: (vol || .22), a: .01, d: .13, at: at, bp: 1150 * p, q: 5 });
   tone({ f: 560 * p, f2: 380 * p, type: 'square', vol: (vol || .22) * .5, a: .01, d: .11, at: at, bp: 2500 * p, q: 6 });
 }
+// ---------- recorded sounds: real quacks, barks, punches, pans, booms (web/sounds, see SOUND CREDITS below) ----------
+// Clips ship inside game.js and are decoded a few at a time after the first touch; until a clip is ready its synth version plays.
+var SBUF = {};
+function loadSamples(c) {
+  if (typeof SOUND_DATA === 'undefined') return; var names = Object.keys(SOUND_DATA), i = 0;
+  (function next() { if (i >= names.length) return; var nm = names[i++];
+    try { var bin = atob(SOUND_DATA[nm]), u = new Uint8Array(bin.length); for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+      var done = function (buf) { SBUF[nm] = buf; setTimeout(next, 15); }, fail = function () { setTimeout(next, 15); };
+      var pr = c.decodeAudioData(u.buffer, done, fail); if (pr && pr.catch) pr.catch(fail); } catch (e) { setTimeout(next, 15); } })();
+}
+function samp(name, o) { // play a clip: o.rate (pitch/speed), o.vol, o.at (delay s); false if not loaded yet
+  var b = SBUF[name]; if (!b) return false; var c = SND.ctx, s = c.createBufferSource(), g = c.createGain();
+  s.buffer = b; s.playbackRate.value = o && o.rate || 1; g.gain.value = o && o.vol !== undefined ? o.vol : .5; s.connect(g); g.connect(SND.sfxBus); s.start(c.currentTime + (o && o.at || 0)); return true;
+}
+function one(list) { return list[Math.floor(Math.random() * list.length)]; }
+function jit(a, b) { return a + Math.random() * (b - a); }
+var QK = ['quack1', 'quack2', 'quack3'];
+var REAL = {   // each returns false when its main clip isn't decoded yet, so the synth version plays instead
+  quack: function () { return samp(one(QK), { rate: jit(1, 1.15), vol: .55 }); },
+  quackHi: function () { return samp(one(QK), { rate: jit(1.3, 1.6), vol: .5 }); },
+  quackLo: function () { return samp(one(QK), { rate: jit(.68, .78), vol: .75 }); },
+  peep: function () { return samp(one(QK), { rate: jit(1.9, 2.2), vol: .3 }); },
+  deploy: function () { return samp(one(QK), { rate: jit(1.1, 1.35), vol: .42 }); },
+  train: function () { return samp(one(QK), { rate: 1.45, vol: .35 }); },
+  duckdie: function () { return samp('quack4', { rate: jit(1.15, 1.3), vol: .4 }); },
+  bark: function () { return samp(one(['bark1', 'bark2']), { rate: jit(.95, 1.1), vol: .7 }); },
+  squawk: function () { return samp('squawk', { rate: jit(1.05, 1.2), vol: .5 }); },
+  oink: function () { return samp('oink', { rate: jit(1.05, 1.2), vol: .5 }); },
+  cackle: function () { return samp('laugh', { rate: jit(1.5, 1.65), vol: .45 }); },
+  wee: function () { if (!samp('whoosh1', { rate: 1.4, vol: .45 })) return false; samp(one(QK), { rate: 1.65, vol: .3, at: .05 }); return true; },
+  stab: function () { if (!samp('blade', { rate: jit(1.3, 1.5), vol: .3 })) return false; samp('punch2', { rate: 1.6, vol: .28 }); return true; },
+  smash: function () { if (!samp(one(['punch3', 'punch4']), { rate: jit(.88, 1.02), vol: .7 })) return false; samp(one(['pan1', 'pan2']), { rate: jit(.95, 1.1), vol: .3 }); return true; },
+  bite: function () { return samp('punch2', { rate: jit(1.25, 1.4), vol: .6 }); },
+  swing: function () { return samp('whoosh2', { rate: jit(.85, 1.1), vol: .6 }); },
+  swoosh: function () { return samp('swoosh1', { rate: jit(.95, 1.1), vol: .55 }); },
+  whirl: function () { if (!samp('swoosh2', { rate: 1.2, vol: .55 })) return false; samp('swoosh2', { rate: 1.35, vol: .45, at: .26 }); return true; },
+  gust: function () { return samp('swoosh1', { rate: .6, vol: .6 }); },
+  pew: function () { return samp('boing2', { rate: jit(2.1, 2.4), vol: .28 }); },
+  twang: function () { if (!samp('boing1', { rate: jit(.66, .74), vol: .55 })) return false; samp('kick', { rate: .9, vol: .45 }); return true; },
+  cooker: function () { if (!samp('hiss', { rate: 1.1, vol: .6 })) return false; samp('lowboom', { rate: 1, vol: .8, at: .05 }); return true; },
+  spray: function () { return samp('splash', { rate: jit(1.3, 1.45), vol: 1.4 }); },
+  flame: function () { return samp('fire', { rate: jit(.95, 1.1), vol: .5 }); },
+  sizzle: function () { return samp('fire', { rate: 1.6, vol: .3 }); },
+  stone: function () { if (!samp('thump1', { rate: jit(.9, 1.05), vol: .7 })) return false; samp('punch1', { rate: .8, vol: .28 }); return true; },
+  thud: function () { return samp('thump1', { rate: jit(1.1, 1.3), vol: .45 }); },
+  boom: function () { return samp(one(['blast2', 'blast3']), { rate: jit(.92, 1.05), vol: .8 }); },
+  cracker: function () { return samp('blast1', { rate: jit(1.2, 1.35), vol: .65 }); },
+  squish: function () { if (!samp('squish', { rate: jit(1.05, 1.2), vol: .75 })) return false; samp('splash', { rate: .9, vol: 1.1 }); return true; },
+  splat: function () { if (!samp('splash', { rate: jit(.95, 1.1), vol: 1.4 })) return false; samp('thump1', { rate: .8, vol: .35 }); return true; },
+  water: function () { return samp('splash', { rate: 1.25, vol: 1.3 }); },
+  chime: function () { return samp('magic', { rate: 1.25, vol: .4 }); },
+  heal: function () { return samp('magic', { rate: 1.1, vol: .4 }); },
+  crash: function () { if (!samp('wood', { rate: jit(.9, 1.05), vol: .8 })) return false; samp('blast1', { rate: .7, vol: .4 }); return true; },
+  wall: function () { return samp('wood', { rate: jit(1.4, 1.6), vol: .5 }); }
+};
 var SFX = {
   tap: function () { tone({ f: 880, f2: 660, type: 'triangle', vol: .12, d: .05 }); },
   quack: function () { quack(0, .9 + Math.random() * .25); },
@@ -104,12 +160,16 @@ var SFX_GAP = { quackHi: 140, quackLo: 220, peep: 150, cackle: 500, bark: 260, s
   twang: 90, cooker: 300, spray: 140, flame: 180, stone: 80, boom: 160, sizzle: 200, squish: 120, chime: 160, crash: 120, cracker: 90, quack: 90, deploy: 70, stab: 60, smash: 80, bite: 80, shot: 50, fire: 120, egg: 90, water: 60, thud: 50, wall: 80, duckdie: 150, meow: 400, dig: 250, heal: 300, hiss: 300 };
 var SFX_MUST = { crash: 1, boom: 1, win: 1, lose: 1, horn: 1, tap: 1, done: 1, coin: 1, error: 1, colonel: 1, build: 1 };
 function sfx(name) {
-  if (!SND.on) return; var c = audio(); if (!c || c.state !== 'running' || !SFX[name]) return;
+  if (!SND.on) return; var c = audio(); if (!c || c.state !== 'running' || !(SFX[name] || REAL[name])) return;
   var t = performance.now(); if (t - (SND.last[name] || 0) < (SFX_GAP[name] || 30)) return;
   var Q = SND.recent || (SND.recent = []); while (Q.length && t - Q[0] > 150) Q.shift();
   if (Q.length >= 9 && !SFX_MUST[name]) return; Q.push(t); SND.last[name] = t;
-  try { SFX[name](); } catch (e) {}
+  try { if (!(REAL[name] && REAL[name]())) SFX[name](); } catch (e) {}
 }
+// SOUND CREDITS (also shown in the sound settings):
+//   "Oculus Audio Pack 01" by Oculus VR, LLC (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/), CC BY 4.0 — via facebookincubator/Meta-open-sound; clips trimmed, pitched and re-encoded.
+//   Kenney Sci-Fi sounds (kenney.nl), CC0 — via ignition-bench/sound-library.  wyzowl/sfx-kit, CC0.
+var SOUND_CREDIT = 'เสียงประกอบบางส่วน: "Oculus Audio Pack 01" โดย Oculus VR, LLC (CC BY 4.0) · Kenney (CC0) · sfx-kit (CC0)';
 function setSound(on) { SND.on = on; if (SND.sfxBus) SND.sfxBus.gain.value = on ? 1 : 0; soundSave(); }
 function setMusic(on) { SND.music = on; if (SND.musicBus) SND.musicBus.gain.setTargetAtTime(on ? .32 : 0, SND.ctx.currentTime, .2); soundSave(); if (on) startMusic(); }
 

@@ -1,4 +1,4 @@
-// Duck War — weapon effects: muzzle flashes, trails, impact bursts, comic hit words and a little screen shake.
+// Duck War — weapon effects: muzzle flashes, trails, impact bursts, and a little screen shake (hits are heard, not written).
 // Built to stay smooth on phones: one pooled particle list with a hard cap (fewer particles when the battle is crowded),
 // only flat shapes (no gradients, no blur), comic words rate-limited, and the shake moves the canvas with CSS (free on the GPU).
 var PARTS = [], PART_MAX = 260, WORDS = [], WORD_MAX = 5, WORD_LAST = 0, SHAKE = { a: 0 };
@@ -16,8 +16,8 @@ function burst(x, y, z, n, kind, colors, speed, up, life, size) {
            c: colors[i % colors.length], s: size * (.7 + Math.random() * .6), r: Math.random() * 6.28 }); }
 }
 function ring(x, y, r, color, life, w) { if (PARTS.length < PART_MAX) PARTS.push({ k: 'ring', x: x, y: y, z: 0, vx: 0, vy: 0, vz: 0, life: life, age: 0, c: color, s: r, w: w || 4 }); }
-function word(text, x, y, z, color, big) { // comic sound word that pops and floats up
-  var t = now(); if (WORDS.length >= WORD_MAX || t - WORD_LAST < 220) return; WORD_LAST = t;
+function word(text, x, y, z, color, big) { // comic sound words were replaced by real recorded sounds
+  return; var t = now(); if (WORDS.length >= WORD_MAX || t - WORD_LAST < 220) return; WORD_LAST = t;
   WORDS.push({ t: text, x: x, y: y, z: z, c: color, age: 0, life: .75, big: big || 1, tilt: (Math.random() - .5) * .3 });
 }
 function shake(a) { SHAKE.a = Math.min(7, Math.max(SHAKE.a, a)); }

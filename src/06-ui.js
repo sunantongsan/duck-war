@@ -215,6 +215,7 @@ function soundMenu() {
     var m = h('button', 'btn ' + (SND.music ? 'green' : ''), '🎵 เพลง ' + (SND.music ? 'เปิด' : 'ปิด')); m.onclick = function () { setMusic(!SND.music); soundMenu(); };
     row.appendChild(a); row.appendChild(m); body.appendChild(row);
     var gr = h('div', 'p-row sound-row'), gb = h('button', 'btn', '🌳 พื้นแผนที่: ' + GROUNDS[D.ground || 0].name); gb.onclick = function () { groundPicker(false); }; gr.appendChild(gb); body.appendChild(gr);
+    body.appendChild(h('div', 'snd-credit', SOUND_CREDIT));
   });
   $('btn-sound').textContent = SND.on || SND.music ? '🔊' : '🔇';
 }
