@@ -823,7 +823,7 @@ function endRaid() {
 }
 
 // ---- src/05-render.js ----
-// Duck War — drawing: grass field, buildings (with contact shadows baked in), turrets that turn, walls that join,
+// Duck War — drawing: grass field with tufts, flowers, rocks and trees, buildings (with contact shadows baked in), turrets that turn, walls that join,
 // troops from 8-direction sheets with cartoon squash & stretch, shots and effects. Depth = x + y (back to front).
 // Keep the visible terrain and deployment overlay in one screen-sized bitmap.
 var groundCache = null;
@@ -862,18 +862,140 @@ function paintDeployZone(c, raid, flash) {
       tileDiamond(b.x - 1, b.y - 1, B[b.k].size + 2, red, null, c);
   });
 }
+// ---------- terrain: lawn inside the base, a wilder meadow outside it with bushes, rocks and trees ----------
+// Decorations are placed once from a fixed seed (same spot every visit) and drawn from small pre-painted stamps,
+// so panning only re-blits a few hundred tiny images. Tall things (trees, boulders) live outside the 40x40 base
+// so they never sit under a building; inside there are only flat things: tufts, flowers, pebbles, worn patches.
+var GU = 64;                       // stamp resolution: px per tile edge
+var DECOR = null, STAMPS = null;
+function rnd(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function stampCanvas(w, h, paint) { var cv = document.createElement('canvas'); cv.width = w; cv.height = h; var g = cv.getContext('2d'); try { paint(g, w, h); } catch (e) {} return { cv: cv, w: w, h: h, ax: w / 2, ay: h - 10 }; }
+function blade(g, x, y, len, lean, w, col) { g.beginPath(); g.moveTo(x - w, y); g.quadraticCurveTo(x + lean * .3, y - len * .6, x + lean, y - len); g.quadraticCurveTo(x + lean * .3 + w * .4, y - len * .5, x + w, y); g.closePath(); g.fillStyle = col; g.fill(); }
+function makeStamps() {
+  var r = rnd(7), S = {};
+  function many(n, f) { var out = []; for (var i = 0; i < n; i++) out.push(f(i)); return out; }
+  S.tuft = many(4, function (v) { return stampCanvas(56, 46, function (g, w, h) {
+    var n = 5 + v * 2; for (var i = 0; i < n; i++) { var x = w / 2 + (r() - .5) * 26, l = 14 + r() * 20 + (v === 3 ? 6 : 0);
+      blade(g, x, h - 10, l, (x - w / 2) * .7 + (r() - .5) * 10, 2.6, i % 3 ? '#4f9a2e' : '#3f8423'); }
+    for (i = 0; i < n - 2; i++) { x = w / 2 + (r() - .5) * 18; blade(g, x, h - 10, 10 + r() * 12, (x - w / 2) * .6, 2, '#86cf4f'); } }); });
+  var petals = ['#ffffff', '#ffe14d', '#ff8fb8', '#b79bff', '#ff6a5a'];
+  S.flower = many(5, function (v) { return stampCanvas(60, 42, function (g, w, h) {
+    for (var i = 0; i < 6; i++) blade(g, w / 2 + (r() - .5) * 30, h - 10, 6 + r() * 8, (r() - .5) * 8, 1.6, '#4a9429');
+    var n = 3 + Math.floor(r() * 3), col = petals[v];
+    for (i = 0; i < n; i++) { var x = w / 2 + (r() - .5) * 34, y = h - 14 - r() * 14;
+      g.strokeStyle = '#3f8423'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - .5) * 3, h - 10); g.stroke();
+      g.fillStyle = col; for (var k = 0; k < 5; k++) { var a = k / 5 * 6.283; g.beginPath(); g.ellipse(x + Math.cos(a) * 3, y + Math.sin(a) * 2.3, 2.6, 2.1, 0, 0, 7); g.fill(); }
+      g.fillStyle = v === 1 ? '#e07a10' : '#ffcc22'; g.beginPath(); g.arc(x, y, 1.7, 0, 7); g.fill(); } }); });
+  S.pebble = many(3, function (v) { return stampCanvas(50, 30, function (g, w, h) {
+    var n = 2 + v; for (var i = 0; i < n; i++) { var x = w / 2 + (r() - .5) * 26, y = h - 12 + (r() - .5) * 8, rx = 3 + r() * 4, ry = rx * .62;
+      g.fillStyle = 'rgba(40,70,20,.28)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx + 1, ry + .8, 0, 0, 7); g.fill();
+      g.fillStyle = ['#a9a59a', '#bdb7a8', '#8f8b80'][i % 3]; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.ellipse(x - rx * .3, y - ry * .35, rx * .45, ry * .35, 0, 0, 7); g.fill(); } }); });
+  function boulder(g, cx, by, rw, rh, moss) {
+    g.fillStyle = 'rgba(30,60,15,.35)'; g.beginPath(); g.ellipse(cx + rw * .15, by, rw * 1.1, rw * .45, 0, 0, 7); g.fill();
+    var pts = [], n = 9; for (var i = 0; i < n; i++) { var a = Math.PI + i / (n - 1) * Math.PI, k = .82 + r() * .2; pts.push([cx + Math.cos(a) * rw * k, by - 2 + Math.sin(a) * rh * k]); }
+    g.beginPath(); g.moveTo(cx - rw, by - 2); pts.forEach(function (p) { g.lineTo(p[0], p[1]); }); g.lineTo(cx + rw, by - 2); g.quadraticCurveTo(cx, by + rw * .28, cx - rw, by - 2); g.closePath();
+    var gr = g.createLinearGradient(cx - rw, by - rh, cx + rw, by); gr.addColorStop(0, '#d2cdbf'); gr.addColorStop(.55, '#9d988b'); gr.addColorStop(1, '#6d695f'); g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(50,45,40,.55)'; g.lineWidth = 2; g.stroke();
+    g.strokeStyle = 'rgba(60,55,50,.45)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx - rw * .2, by - rh * .75); g.lineTo(cx + rw * .05, by - rh * .4); g.lineTo(cx - rw * .1, by - rh * .15); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(cx - rw * .35, by - rh * .6, rw * .25, rh * .14, -.4, 0, 7); g.fill();
+    if (moss) { g.fillStyle = '#6aa83a'; g.beginPath(); g.ellipse(cx - rw * .1, by - rh * .86, rw * .42, rh * .14, .1, 0, 7); g.fill(); g.fillStyle = '#8ccf55'; g.beginPath(); g.ellipse(cx - rw * .2, by - rh * .9, rw * .22, rh * .07, .1, 0, 7); g.fill(); }
+    for (i = 0; i < 4; i++) blade(g, cx - rw + r() * rw * 2, by + 2, 6 + r() * 8, (r() - .5) * 6, 1.8, '#4f9a2e');
+  }
+  S.rock = many(4, function (v) { return stampCanvas(110, 90, function (g, w, h) {
+    var big = 26 + v * 4; boulder(g, w / 2 + (v % 2 ? 8 : -6), h - 12, big, big * (.8 + r() * .25), v !== 2);
+    if (v % 2) boulder(g, w / 2 - 24, h - 9, 13, 11, false); }); });
+  S.bush = many(3, function (v) { return stampCanvas(120, 90, function (g, w, h) {
+    g.fillStyle = 'rgba(25,55,10,.35)'; g.beginPath(); g.ellipse(w / 2 + 4, h - 10, 42, 15, 0, 0, 7); g.fill();
+    var blobs = many(7, function () { return [w / 2 + (r() - .5) * 56, h - 22 - r() * 26, 14 + r() * 10]; }).sort(function (a, b) { return a[1] - b[1]; });
+    blobs.forEach(function (b) { g.fillStyle = '#2f6d1f'; g.beginPath(); g.arc(b[0], b[1] + 2, b[2], 0, 7); g.fill(); });
+    blobs.forEach(function (b) { var gr = g.createRadialGradient(b[0] - b[2] * .4, b[1] - b[2] * .5, 2, b[0], b[1], b[2]); gr.addColorStop(0, '#8fd457'); gr.addColorStop(1, '#3f8a26'); g.fillStyle = gr; g.beginPath(); g.arc(b[0], b[1], b[2] - 2, 0, 7); g.fill(); });
+    if (v === 1) for (var i = 0; i < 6; i++) { g.fillStyle = '#e0313a'; g.beginPath(); g.arc(w / 2 + (r() - .5) * 50, h - 26 - r() * 26, 2.8, 0, 7); g.fill(); }
+    if (v === 2) for (i = 0; i < 7; i++) { g.fillStyle = '#fff4f8'; g.beginPath(); g.arc(w / 2 + (r() - .5) * 50, h - 26 - r() * 26, 2.6, 0, 7); g.fill(); } }); });
+  S.tree = many(3, function (v) { return stampCanvas(150, 200, function (g, w, h) {
+    var cx = w / 2, by = h - 12;
+    g.fillStyle = 'rgba(20,50,10,.38)'; g.beginPath(); g.ellipse(cx + 14, by, 50, 18, 0, 0, 7); g.fill();
+    var tg = g.createLinearGradient(cx - 8, 0, cx + 8, 0); tg.addColorStop(0, '#9a6a3c'); tg.addColorStop(1, '#5e3c1e'); g.fillStyle = tg;
+    g.beginPath(); g.moveTo(cx - 9, by); g.quadraticCurveTo(cx - 5, by - 40, cx - 6, by - 70); g.lineTo(cx + 6, by - 70); g.quadraticCurveTo(cx + 5, by - 40, cx + 11, by); g.closePath(); g.fill();
+    if (v === 2) { // pine
+      for (var t = 0; t < 4; t++) { var y0 = by - 40 - t * 30, hw = 46 - t * 9; g.fillStyle = '#245a24'; g.beginPath(); g.moveTo(cx - hw, y0 + 4); g.lineTo(cx, y0 - 54); g.lineTo(cx + hw, y0 + 4); g.quadraticCurveTo(cx, y0 + 14, cx - hw, y0 + 4); g.fill();
+        g.fillStyle = '#3d8a33'; g.beginPath(); g.moveTo(cx - hw + 6, y0); g.lineTo(cx, y0 - 50); g.lineTo(cx + 4, y0 + 6); g.quadraticCurveTo(cx - hw * .5, y0 + 8, cx - hw + 6, y0); g.fill(); }
+      return; }
+    var blobs = many(8, function () { return [cx + (r() - .5) * 70, by - 96 - r() * 62, 22 + r() * 14]; }).sort(function (a, b) { return a[1] - b[1]; });
+    blobs.forEach(function (b) { g.fillStyle = '#285f1c'; g.beginPath(); g.arc(b[0] + 2, b[1] + 4, b[2], 0, 7); g.fill(); });
+    blobs.forEach(function (b) { var gr = g.createRadialGradient(b[0] - b[2] * .45, b[1] - b[2] * .5, 3, b[0], b[1], b[2]); gr.addColorStop(0, v ? '#b6e264' : '#94d85a'); gr.addColorStop(1, v ? '#4e9a2a' : '#3a8526'); g.fillStyle = gr; g.beginPath(); g.arc(b[0], b[1], b[2] - 2, 0, 7); g.fill(); });
+    if (v === 1) for (var i = 0; i < 7; i++) { g.fillStyle = '#ff9a1f'; g.beginPath(); g.arc(cx + (r() - .5) * 64, by - 100 - r() * 50, 4, 0, 7); g.fill(); } }); });
+  S.stump = [stampCanvas(70, 50, function (g, w, h) { var cx = w / 2, by = h - 12;
+    g.fillStyle = 'rgba(30,60,15,.33)'; g.beginPath(); g.ellipse(cx + 3, by, 22, 8, 0, 0, 7); g.fill();
+    g.fillStyle = '#7a4f2a'; g.fillRect(cx - 14, by - 16, 28, 16); g.beginPath(); g.ellipse(cx, by, 14, 5, 0, 0, 7); g.fill();
+    g.fillStyle = '#d9b27a'; g.beginPath(); g.ellipse(cx, by - 16, 14, 5.5, 0, 0, 7); g.fill(); g.strokeStyle = '#a77a45'; g.lineWidth = 1; g.beginPath(); g.ellipse(cx, by - 16, 8, 3, 0, 0, 7); g.stroke();
+    blade(g, cx - 16, by + 1, 10, -3, 2, '#4f9a2e'); blade(g, cx + 15, by + 1, 12, 3, 2, '#4f9a2e'); })];
+  S.mushroom = many(2, function (v) { return stampCanvas(46, 40, function (g, w, h) {
+    for (var i = 0; i < 2 + v; i++) { var x = w / 2 + (i - .5) * 11, by = h - 10, s = 1 - i * .25;
+      g.fillStyle = '#f3ead6'; g.fillRect(x - 2.5 * s, by - 10 * s, 5 * s, 10 * s);
+      g.fillStyle = '#e2392f'; g.beginPath(); g.ellipse(x, by - 10 * s, 9 * s, 6.5 * s, 0, Math.PI, 0); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 3 * s, by - 13 * s, 1.5 * s, 0, 7); g.arc(x + 3 * s, by - 12 * s, 1.2 * s, 0, 7); g.fill(); } }); });
+  return S;
+}
+function makeDecor() {
+  var r = rnd(20261124), out = [], M = MAP, E = 9;
+  function add(k, x, y, s) { var list = STAMPS[k]; out.push({ st: list[Math.floor(r() * list.length)], x: x, y: y, s: s || 1, small: k === 'tuft' || k === 'flower' || k === 'pebble' || k === 'mushroom', flip: r() < .5 }); }
+  for (var ty = -E; ty < M + E; ty++) for (var tx = -E; tx < M + E; tx++) {
+    var inside = tx >= 0 && ty >= 0 && tx < M && ty < M, x = tx + r(), y = ty + r(), q = r();
+    if (inside) { // the lawn: only flat, small things (a building simply covers them)
+      if (q < .07) add('tuft', x, y, .8 + r() * .4); else if (q < .095) add('flower', x, y, .8 + r() * .3); else if (q < .11) add('pebble', x, y); else if (q < .114) add('rock', x, y, .32 + r() * .12);
+      continue; }
+    var edge = Math.max(-tx - 1, -ty - 1, tx - M, ty - M);            // 0 = the ring right next to the base
+    var back = tx < 0 || ty < 0;                                      // behind the base on screen: tall trees are fine there
+    if (edge === 0) { if (q < .22) add('tuft', x, y, 1); else if (q < .3) add('flower', x, y); else if (q < .36) add('pebble', x, y); continue; }
+    if (back && edge >= 2 && q < .2) add('tree', x, y, .85 + r() * .35);
+    else if (q < .3) add('bush', x, y, .7 + r() * .5);
+    else if (q < .37) add('rock', x, y, .6 + r() * .6);
+    else if (q < .39) add('stump', x, y);
+    else if (q < .41) add('mushroom', x, y);
+    else if (q < .58) add('tuft', x, y, 1 + r() * .3);
+    else if (q < .66) add('flower', x, y);
+  }
+  out.sort(function (a, b) { return (a.x + a.y) - (b.x + b.y); });
+  // soft worn patches on the lawn (drawn first, flat)
+  var patches = []; for (var i = 0; i < 18; i++) patches.push({ x: 2 + r() * (M - 4), y: 2 + r() * (M - 4), rx: .8 + r() * 1.6, ry: .6 + r() * 1.2, a: r() * 3, dirt: r() < .35 });
+  return { items: out, patches: patches };
+}
 function paintGround(c) {
-  c.fillStyle = '#6fb84a'; c.fillRect(0, 0, view.w, view.h);
-  var p = [toScreen(0, 0), toScreen(MAP, 0), toScreen(MAP, MAP), toScreen(0, MAP)];
-  c.save(); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (var i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath();
-  var g = c.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y); g.addColorStop(0, '#9fe06a'); g.addColorStop(1, '#7fcb55'); c.fillStyle = g; c.fill();
+  if (!STAMPS) STAMPS = makeStamps();
+  if (!DECOR) DECOR = makeDecor();
+  var p = [toScreen(0, 0), toScreen(MAP, 0), toScreen(MAP, MAP), toScreen(0, MAP)], s = cam.s;
+  // outer meadow: a deeper green with darker shade bands toward the screen edges
+  var bg = c.createLinearGradient(0, 0, 0, view.h); bg.addColorStop(0, '#4f9132'); bg.addColorStop(.5, '#5ea33b'); bg.addColorStop(1, '#4c8c30');
+  c.fillStyle = bg; c.fillRect(0, 0, view.w, view.h);
+  // a dirt rim around the base (like a trampled edge), then the mown lawn inside
+  var rim = [toScreen(-.35, -.35), toScreen(MAP + .35, -.35), toScreen(MAP + .35, MAP + .35), toScreen(-.35, MAP + .35)];
+  c.beginPath(); c.moveTo(rim[0].x, rim[0].y); for (var i = 1; i < 4; i++) c.lineTo(rim[i].x, rim[i].y); c.closePath(); c.fillStyle = '#9c8452'; c.fill();
+  c.save(); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath();
+  var g = c.createLinearGradient(p[0].x, p[0].y, p[2].x, p[2].y); g.addColorStop(0, '#a6e46e'); g.addColorStop(.5, '#8fd65c'); g.addColorStop(1, '#79c64f'); c.fillStyle = g; c.fill();
   c.clip();
-  // checkerboard of soft lighter tiles (like a mown lawn)
-  c.fillStyle = 'rgba(255,255,255,.06)'; c.beginPath();   // one path for all 800 tiles: repainting the lawn when a building falls no longer hitches
-  for (var x = 0; x < MAP; x++) for (var y = 0; y < MAP; y++) if ((x + y) % 2 === 0) { var a = toScreen(x, y), b = toScreen(x + 1, y), d = toScreen(x + 1, y + 1), e = toScreen(x, y + 1); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath(); }
+  // mown stripes: every other row slightly lighter, like a fresh lawn
+  c.fillStyle = 'rgba(255,255,255,.07)'; c.beginPath();
+  for (var row = 0; row < MAP; row += 2) { var a = toScreen(row, 0), b = toScreen(row + 1, 0), d = toScreen(row + 1, MAP), e = toScreen(row, MAP); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath(); }
   c.fill();
+  c.fillStyle = 'rgba(0,40,0,.035)'; c.beginPath();
+  for (var col = 0; col < MAP; col += 2) { a = toScreen(0, col), b = toScreen(MAP, col), d = toScreen(MAP, col + 1), e = toScreen(0, col + 1); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y); c.closePath(); }
+  c.fill();
+  DECOR.patches.forEach(function (q) { var o = toScreen(q.x, q.y); c.fillStyle = q.dirt ? 'rgba(150,120,60,.1)' : 'rgba(220,255,160,.1)';
+    c.beginPath(); c.ellipse(o.x, o.y, q.rx * s, q.ry * s * ISO, q.a, 0, 7); c.fill(); });
   c.restore();
-  c.strokeStyle = 'rgba(70,120,40,.55)'; c.lineWidth = 3; c.beginPath(); c.moveTo(p[0].x, p[0].y); for (i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath(); c.stroke();
+  // inner shade along the rim so the lawn looks slightly raised
+  c.strokeStyle = 'rgba(60,95,30,.55)'; c.lineWidth = Math.max(1.5, s * .06); c.beginPath(); c.moveTo(p[0].x, p[0].y); for (i = 1; i < 4; i++) c.lineTo(p[i].x, p[i].y); c.closePath(); c.stroke();
+  // decorations (culled to the screen; the tiniest ones skipped when zoomed far out)
+  var k = s / GU, tiny = s < 13, W = view.w, Hh = view.h;
+  c.imageSmoothingEnabled = true;
+  for (i = 0; i < DECOR.items.length; i++) {
+    var it = DECOR.items[i]; if (tiny && it.small) continue;
+    var o = toScreen(it.x, it.y), st = it.st, z = k * it.s, w = st.w * z, h = st.h * z;
+    if (o.x + w < 0 || o.x - w > W || o.y - h > Hh || o.y + h < 0) continue;
+    if (it.flip) { c.save(); c.translate(o.x, o.y); c.scale(-1, 1); c.drawImage(st.cv, -st.ax * z, -st.ay * z, w, h); c.restore(); }
+    else c.drawImage(st.cv, o.x - st.ax * z, o.y - st.ay * z, w, h);
+  }
 }
 function tileDiamond(x, y, s, fill, stroke, c) {
   c = c || ctx;
