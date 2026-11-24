@@ -62,7 +62,15 @@ var GROUNDS = [
   { name: 'หิมะ', desc: 'หิมะขาวโพลน ต้นสนมีหิมะเกาะ', outer: ['#c9d8e6', '#d6e2ee', '#c6d5e4'], lawn: ['#edf3f9', '#e0e9f2', '#d3dfeb'], rim: '#a9bccd', edge: 'rgba(120,150,180,.55)',
     stripes: 'check', stripeA: -.035, grass: ['#8a8a5a', '#a6a274', '#c9c7a0'], petals: [], leaf: ['#e9f2f8', '#9fb7c9', '#7f98ad'],
     berry: ['#e0313a', '#e0313a'], trees: ['snowpine', 'snowpine', 'snowpine', 'bare'], patch: ['rgba(150,180,210,.12)', 'rgba(255,255,255,.3)'], snow: true,
-    inside: { mound: .035, tuft: .015, pebble: .012, rock: .004 }, outside: { tree: .3, bush: .08, rock: .08, stump: .02, mound: .14, tuft: .05 } }
+    inside: { mound: .035, tuft: .015, pebble: .012, rock: .004 }, outside: { tree: .3, bush: .08, rock: .08, stump: .02, mound: .14, tuft: .05 } },
+  { name: 'ทุ่งทานตะวัน', desc: 'ทานตะวันบานเหลืองอร่ามรอบฐาน', outer: ['#5f9a34', '#6ca83b', '#5a9232'], lawn: ['#b9e477', '#a3d765', '#8fc957'], rim: '#a9864e', edge: 'rgba(80,115,40,.55)',
+    stripes: 'rows', stripeA: .06, grass: ['#4a8f2a', '#5aa536', '#a2dc66'], petals: ['#ffd21f', '#ffe14d', '#ffffff'], leaf: ['#8fd457', '#3f8a26', '#2f6d1f'],
+    berry: ['#ffd21f', '#ffe14d'], trees: ['sunflowers', 'sunflowers', 'sunflowers', 'round'], sun: true, patch: ['rgba(150,120,60,.1)', 'rgba(255,240,150,.12)'],
+    inside: { tuft: .05, flower: .04, sunflower: .012, pebble: .01, rock: .003 }, outside: { tree: .3, sunflower: .3, bush: .05, rock: .03, tuft: .1, flower: .06 } },
+  { name: 'ทุ่งนาข้าว', desc: 'นาข้าวเขียวขจี คันนา ต้นตาล หุ่นไล่กา', outer: ['#5f9d6b', '#6aa877', '#5b9767'], lawn: ['#c4df7a', '#b0d268', '#9cc458'], rim: '#a88a56', edge: 'rgba(100,110,45,.55)',
+    stripes: 'check', stripeA: .05, grass: ['#4f8f22', '#68aa2c', '#b5df5a'], petals: ['#ffffff', '#ffe14d'], leaf: ['#8fd457', '#3f8a26', '#2f6d1f'],
+    berry: ['#e0313a', '#ffe14d'], trees: ['palm', 'palm', 'palm', 'round'], paddy: true, patch: ['rgba(150,120,60,.12)', 'rgba(240,255,170,.12)'],
+    inside: { tuft: .06, flower: .015, pebble: .012, rock: .004 }, outside: { tree: .07, scarecrow: .006, bush: .015, rice: .9 } }
 ];
 var DECOR = {}, STAMPS = {};
 function rnd(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -131,6 +139,17 @@ function makeStamps(T) {
     if (kind === 'bare') { g.strokeStyle = '#5e3c1e'; g.lineCap = 'round'; for (var i = 0; i < 6; i++) { var a = -Math.PI / 2 + (r() - .5) * 1.8, y1 = by - 60 - r() * 20, l = 30 + r() * 30;
         g.lineWidth = 5; g.beginPath(); g.moveTo(cx, y1); g.lineTo(cx + Math.cos(a) * l, y1 + Math.sin(a) * l); g.stroke();
         g.fillStyle = '#fff'; g.beginPath(); g.ellipse(cx + Math.cos(a) * l * .7, y1 + Math.sin(a) * l * .7 - 3, 7, 3, a + Math.PI / 2, 0, 7); g.fill(); } return; }
+    if (kind === 'sunflowers') { g.clearRect(0, 0, w, h); return sunflowerClump(g, cx, by, 5, 60); }
+    if (kind === 'palm') { // a Thai sugar palm: tall thin trunk, round crown of fan leaves
+      g.clearRect(0, 0, w, h); g.fillStyle = 'rgba(20,50,20,.32)'; g.beginPath(); g.ellipse(cx + 18, by, 36, 12, 0, 0, 7); g.fill();
+      var tg2 = g.createLinearGradient(cx - 6, 0, cx + 6, 0); tg2.addColorStop(0, '#8a6a4a'); tg2.addColorStop(1, '#4e3826'); g.fillStyle = tg2;
+      g.beginPath(); g.moveTo(cx - 6, by); g.lineTo(cx - 3.5, by - 140); g.lineTo(cx + 3.5, by - 140); g.lineTo(cx + 7, by); g.closePath(); g.fill();
+      g.fillStyle = '#2f5f22'; g.beginPath(); g.arc(cx, by - 150, 15, 0, 7); g.fill();
+      for (var f = 0; f < 13; f++) { var fa = -Math.PI + f / 12 * Math.PI * 1.0 + (r() - .5) * .2, fx = cx + Math.cos(fa) * 30, fy = by - 150 + Math.sin(fa) * 26 + (f % 2) * 4;
+        g.save(); g.translate(fx, fy); g.rotate(fa + Math.PI / 2); g.fillStyle = f % 2 ? '#3f8a2e' : '#5aa83a';
+        g.beginPath(); g.moveTo(0, 14); for (var p2 = 0; p2 <= 6; p2++) { var pa = Math.PI + p2 / 6 * Math.PI; g.lineTo(Math.cos(pa) * 15, Math.sin(pa) * 15 + 2); } g.closePath(); g.fill(); g.restore(); }
+      g.fillStyle = '#3a6e28'; for (f = 0; f < 4; f++) { g.beginPath(); g.ellipse(cx + (f - 1.5) * 9, by - 140, 6, 14, (f - 1.5) * .3, 0, 7); g.fill(); }
+      return; }
     if (kind === 'blossom') return roundTree(g, cx, by, '#ffd3e6', '#f28ab7', '#c9638f', '#ffffff');
     if (kind === 'autumnO') return roundTree(g, cx, by, '#ffc25a', '#e8741f', '#a84a14');
     if (kind === 'autumnR') return roundTree(g, cx, by, '#ff8a5a', '#cf3d1f', '#8e2614');
@@ -146,6 +165,33 @@ function makeStamps(T) {
       g.fillStyle = '#f3ead6'; g.fillRect(x - 2.5 * s, by - 10 * s, 5 * s, 10 * s);
       g.fillStyle = v ? '#c0742f' : '#e2392f'; g.beginPath(); g.ellipse(x, by - 10 * s, 9 * s, 6.5 * s, 0, Math.PI, 0); g.fill();
       g.fillStyle = '#fff'; g.beginPath(); g.arc(x - 3 * s, by - 13 * s, 1.5 * s, 0, 7); g.arc(x + 3 * s, by - 12 * s, 1.2 * s, 0, 7); g.fill(); } }); });
+  if (T.sun) S.sunflower = many(3, function (v) { return stampCanvas(70, 90, function (g, w, h) { sunflowerClump(g, w / 2, h - 10, 2 + v, 34 + v * 6); }); });
+  function sunflowerClump(g, cx, by, n, tall) {
+    g.fillStyle = 'rgba(30,60,15,.3)'; g.beginPath(); g.ellipse(cx + 3, by, 10 + n * 6, 5 + n, 0, 0, 7); g.fill();
+    var heads = many(n, function (i) { return [cx + (i - (n - 1) / 2) * 14 + (r() - .5) * 8, by - tall * (.75 + r() * .35), 7 + r() * 2.5]; }).sort(function (a, b) { return a[1] - b[1]; });
+    heads.forEach(function (q) {
+      g.strokeStyle = '#3f8423'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(q[0], q[1]); g.quadraticCurveTo(q[0] + 3, (q[1] + by) / 2, q[0] - 1, by); g.stroke();
+      g.fillStyle = '#4f9a2e'; g.beginPath(); g.ellipse(q[0] - 6, (q[1] + by) / 2 + 4, 6, 3, .5, 0, 7); g.ellipse(q[0] + 6, (q[1] + by) / 2 - 2, 6, 3, -.5, 0, 7); g.fill();
+      g.fillStyle = '#ffc21a'; for (var k = 0; k < 12; k++) { var a = k / 12 * 6.283; g.beginPath(); g.ellipse(q[0] + Math.cos(a) * q[2] * .95, q[1] + Math.sin(a) * q[2] * .8, q[2] * .5, q[2] * .22, a, 0, 7); g.fill(); }
+      g.fillStyle = '#ffe14d'; for (k = 0; k < 12; k++) { a = (k + .5) / 12 * 6.283; g.beginPath(); g.ellipse(q[0] + Math.cos(a) * q[2] * .8, q[1] + Math.sin(a) * q[2] * .66, q[2] * .4, q[2] * .17, a, 0, 7); g.fill(); }
+      g.fillStyle = '#6b3d14'; g.beginPath(); g.ellipse(q[0], q[1], q[2] * .55, q[2] * .48, 0, 0, 7); g.fill();
+      g.fillStyle = '#4a2a0c'; g.beginPath(); g.ellipse(q[0] + 1, q[1] + 1, q[2] * .3, q[2] * .25, 0, 0, 7); g.fill(); });
+  }
+  if (T.paddy) {
+    S.rice = many(4, function (v) { return stampCanvas(80, 50, function (g, w, h) {
+      g.fillStyle = 'rgba(170,220,235,.45)'; g.beginPath(); g.ellipse(w / 2, h - 10, 30, 10, 0, 0, 7); g.fill();
+      for (var row = -1; row <= 1; row++) for (var col = -1; col <= 1; col++) { var x = w / 2 + (col - row) * 9, y = h - 10 + (col + row) * 3.4;
+        for (var i = 0; i < 6; i++) blade(g, x + (r() - .5) * 4, y, 12 + r() * 8 + v * 2, (r() - .5) * 10, 1.2, i % 2 ? (v === 3 ? '#c9c43a' : '#5fae2c') : (v === 3 ? '#a8a02a' : '#3f8a1f'));
+        if (v === 3) { g.fillStyle = '#e6c24a'; g.beginPath(); g.ellipse(x + 3, y - 18, 2, 4, .4, 0, 7); g.fill(); } } }); });
+    S.scarecrow = [stampCanvas(80, 110, function (g, w, h) { var cx = w / 2, by = h - 10;
+      g.fillStyle = 'rgba(30,60,30,.3)'; g.beginPath(); g.ellipse(cx + 6, by, 18, 6, 0, 0, 7); g.fill();
+      g.fillStyle = '#7a4f2a'; g.fillRect(cx - 2, by - 70, 4, 70); g.fillRect(cx - 26, by - 58, 52, 4);
+      g.fillStyle = '#c0392b'; g.beginPath(); g.moveTo(cx - 14, by - 58); g.lineTo(cx + 14, by - 58); g.lineTo(cx + 11, by - 30); g.lineTo(cx - 11, by - 30); g.closePath(); g.fill();
+      g.fillStyle = '#e6c56a'; for (var i = 0; i < 5; i++) { g.fillRect(cx - 28 + i * 1.5, by - 56 + i, 3, 8); g.fillRect(cx + 24 - i * 1.5, by - 56 + i, 3, 8); g.fillRect(cx - 10 + i * 4, by - 31, 2, 6); }
+      g.fillStyle = '#f2deb0'; g.beginPath(); g.arc(cx, by - 66, 8, 0, 7); g.fill();
+      g.fillStyle = '#333'; g.fillRect(cx - 4, by - 68, 2, 2); g.fillRect(cx + 2, by - 68, 2, 2);
+      g.fillStyle = '#d9b25a'; g.beginPath(); g.ellipse(cx, by - 72, 16, 4, 0, 0, 7); g.fill(); g.beginPath(); g.moveTo(cx - 8, by - 72); g.lineTo(cx, by - 84); g.lineTo(cx + 8, by - 72); g.fill(); })];
+  }
   if (T.fallen) S.leaves = many(4, function () { return stampCanvas(70, 40, function (g, w, h) {
     for (var i = 0; i < 9; i++) { var x = w / 2 + (r() - .5) * 52, y = h - 12 + (r() - .5) * 18; g.fillStyle = T.fallen[Math.floor(r() * T.fallen.length)];
       g.beginPath(); g.ellipse(x, y, 4.5, 2.4, r() * 3, 0, 7); g.fill(); } }); });
@@ -158,18 +204,19 @@ function makeStamps(T) {
 }
 function makeDecor(T, S) {
   var r = rnd(20261124), out = [], M = MAP, E = 9;
-  function add(k, x, y, sc) { var list = S[k]; if (!list) return; out.push({ st: list[Math.floor(r() * list.length)], x: x, y: y, s: sc || 1, small: k !== 'tree' && k !== 'bush' && k !== 'rock' && k !== 'stump', flip: r() < .5 }); }
+  function add(k, x, y, sc) { var list = S[k]; if (!list) return; out.push({ st: list[Math.floor(r() * list.length)], x: x, y: y, s: sc || 1, small: k === 'tuft' || k === 'flower' || k === 'pebble' || k === 'mushroom' || k === 'leaves' || k === 'mound', flip: r() < .5 }); }
   function pick(w, q) { for (var k in w) { if (q < w[k]) return k; q -= w[k]; } return null; }
-  var ring = { tuft: .22, flower: .08, pebble: .06 }; if (T.snow) ring = { mound: .14, pebble: .06, tuft: .04 }; if (T.fallen) ring.leaves = .14;
+  var ring = { tuft: .22, flower: .08, pebble: .06 }; if (T.snow) ring = { mound: .14, pebble: .06, tuft: .04 }; if (T.fallen) ring.leaves = .14; if (T.sun) ring.sunflower = .08; if (T.paddy) ring = { tuft: .3, flower: .05, pebble: .05 };
   for (var ty = -E; ty < M + E; ty++) for (var tx = -E; tx < M + E; tx++) {
     var inside = tx >= 0 && ty >= 0 && tx < M && ty < M, x = tx + r(), y = ty + r(), q = r(), k;
-    if (inside) { k = pick(T.inside, q); if (k) add(k, x, y, k === 'rock' ? .32 + r() * .12 : k === 'tuft' ? .8 + r() * .4 : .8 + r() * .3); continue; }
+    if (inside) { k = pick(T.inside, q); if (k) add(k, x, y, k === 'rock' ? .32 + r() * .12 : k === 'sunflower' ? .55 + r() * .15 : k === 'tuft' ? .8 + r() * .4 : .8 + r() * .3); continue; }
     var edge = Math.max(-tx - 1, -ty - 1, tx - M, ty - M);            // 0 = the ring right next to the base
     var back = tx < 0 || ty < 0;                                      // behind the base on screen: tall trees are fine there
     if (edge === 0) { k = pick(ring, q); if (k) add(k, x, y); continue; }
     k = pick(T.outside, q);
+    if (k === 'rice') { add('rice', tx + .5 + (r() - .5) * .08, ty + .5 + (r() - .5) * .08, 1.45); continue; }   // paddy rows: planted on the grid
     if (k === 'tree' && !(back && edge >= 2)) k = 'bush';
-    if (k) add(k, x, y, k === 'tree' ? .85 + r() * .35 : k === 'bush' ? .7 + r() * .5 : k === 'rock' ? .6 + r() * .6 : 1);
+    if (k) add(k, x, y, k === 'tree' ? (T.paddy ? 1 + r() * .3 : .85 + r() * .35) : k === 'rice' ? 1 + r() * .15 : k === 'sunflower' ? .9 + r() * .3 : k === 'bush' ? .7 + r() * .5 : k === 'rock' ? .6 + r() * .6 : 1);
   }
   out.sort(function (a, b) { return (a.x + a.y) - (b.x + b.y); });
   var patches = []; for (var i = 0; i < 18; i++) patches.push({ x: 2 + r() * (M - 4), y: 2 + r() * (M - 4), rx: .8 + r() * 1.6, ry: .6 + r() * 1.2, a: r() * 3, dirt: r() < .35 });
@@ -183,6 +230,11 @@ function paintGround(c, themeIndex) {
   var DEC = DECOR[ti], p = [toScreen(0, 0), toScreen(MAP, 0), toScreen(MAP, MAP), toScreen(0, MAP)], s = cam.s;
   var bg = c.createLinearGradient(0, 0, 0, view.h); bg.addColorStop(0, T.outer[0]); bg.addColorStop(.5, T.outer[1]); bg.addColorStop(1, T.outer[2]);
   c.fillStyle = bg; c.fillRect(0, 0, view.w, view.h);
+  if (T.paddy) { // rice paddies: water-green plots split by raised dikes (คันนา)
+    c.fillStyle = 'rgba(160,215,230,.18)'; c.beginPath(); for (var px = -12; px < MAP + 12; px += 4) for (var py = -12; py < MAP + 12; py += 4) { var q0 = toScreen(px + .3, py + .3), q1 = toScreen(px + 3.7, py + .3), q2 = toScreen(px + 3.7, py + 3.7), q3 = toScreen(px + .3, py + 3.7); c.moveTo(q0.x, q0.y); c.lineTo(q1.x, q1.y); c.lineTo(q2.x, q2.y); c.lineTo(q3.x, q3.y); c.closePath(); } c.fill();
+    c.strokeStyle = '#9c8a52'; c.lineWidth = Math.max(1.5, s * .22); c.lineCap = 'round'; c.beginPath();
+    for (var dk = -12; dk <= MAP + 12; dk += 4) { var d0 = toScreen(dk, -12), d1 = toScreen(dk, MAP + 12), d2 = toScreen(-12, dk), d3 = toScreen(MAP + 12, dk); c.moveTo(d0.x, d0.y); c.lineTo(d1.x, d1.y); c.moveTo(d2.x, d2.y); c.lineTo(d3.x, d3.y); } c.stroke();
+    c.strokeStyle = 'rgba(190,230,110,.6)'; c.lineWidth = Math.max(1, s * .07); c.stroke(); }
   // a dirt rim around the base (like a trampled edge), then the lawn inside
   var rim = [toScreen(-.35, -.35), toScreen(MAP + .35, -.35), toScreen(MAP + .35, MAP + .35), toScreen(-.35, MAP + .35)];
   c.beginPath(); c.moveTo(rim[0].x, rim[0].y); for (var i = 1; i < 4; i++) c.lineTo(rim[i].x, rim[i].y); c.closePath(); c.fillStyle = T.rim; c.fill();
