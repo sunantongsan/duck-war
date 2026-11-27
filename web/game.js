@@ -303,6 +303,35 @@ function playStep(i, t, st) {
 // cost(lv) = price to build (lv 1) or to upgrade to lv. res: which resource pays. time(lv) in seconds.
 var STAGES = 5, MAX_LV = 15;
 function stageOf(lv) { return Math.min(STAGES, Math.floor((Math.max(1, lv) - 1) / 3) + 1); }
+// Resolve prepainted level art once. Only visible files are decoded by img().
+function upgradeFile(file, offset) {
+  return offset ? file.replace('.webp', '_v' + (offset + 1) + '.webp') : file;
+}
+function levelArt(level, stages) {
+  var lv = clamp(level || 1, 1, MAX_LV);
+  return stages.byLevel[lv];
+}
+function indexLevelArt(stages, turret) {
+  stages.byLevel = [null];
+  for (var lv = 1; lv <= MAX_LV; lv++) {
+    var stage = stages[stageOf(lv) - 1], offset = (lv - 1) % 3;
+    var file = upgradeFile(stage.file, offset);
+    stages.byLevel.push(turret ? Object.assign({}, stage, { pedestal: offset ? file : null }) :
+      Object.assign({}, stage, { file: file }));
+  }
+}
+Object.keys(ART.buildings).forEach(function (key) { indexLevelArt(ART.buildings[key].stages, false); });
+Object.keys(ART.turrets).forEach(function (key) { indexLevelArt(ART.turrets[key].stages, true); });
+var WALL_ART = [null];
+for (var wallLv = 1; wallLv <= MAX_LV; wallLv++) {
+  var wallTier = Math.ceil(wallLv * 6 / MAX_LV), wallSet = ART.walls[wallTier] || ART.walls['1'];
+  var wallOffset = wallLv - 1 - Math.floor((wallTier - 1) * MAX_LV / 6);
+  var pieces = {};
+  Object.keys(wallSet || {}).forEach(function (key) {
+    pieces[key] = Object.assign({}, wallSet[key], { file: upgradeFile(wallSet[key].file, wallOffset) });
+  });
+  WALL_ART.push(pieces);
+}
 function grow(base, lv, k) { return Math.round(base * Math.pow(k || 1.55, lv - 1)); }
 
 var B = {
@@ -1235,21 +1264,22 @@ function drawBuilding(b, scene) {
   var d = B[b.k], s = d.size, c = { x: b.x + s / 2, y: b.y + s / 2 };
   if (d.wall) return drawWall(b, scene);
   if (b.dead) { var art = d.turret ? null : ART.buildings[d.art].rubble; if (art) sprite(art, c.x, c.y); else drawTurret(b, c, true); if (b.deadAt) smoulder(c, b); return; }
-  var stage = stageOf(Math.max(1, b.lv));
   if (d.turret) drawTurret(b, c, false);
-  else sprite(ART.buildings[d.art].stages[stage - 1], c.x, c.y, { squash: wobble(b), alpha: b.lv === 0 ? .55 : 1 });
+  else sprite(levelArt(b.lv, ART.buildings[d.art].stages), c.x, c.y, { squash: wobble(b), alpha: b.lv === 0 ? .55 : 1 });
   if (b.up) drawScaffold(b, c);
   else if (b.boost && b.boost > now()) drawBoost(b, c);
   if (b.max && b.hp < b.max * .5) smoke(c, b);
 }
 function drawTurret(b, c, dead) {
-  var tu = ART.turrets[B[b.k].turret], st = tu.stages[stageOf(Math.max(1, b.lv)) - 1], im = img(st.file); if (!ready(im)) return;
+  var tu = ART.turrets[B[b.k].turret], st = levelArt(b.lv, tu.stages), im = img(st.file); if (!ready(im)) return;
   var p = toScreen(c.x, c.y), k = cam.s / st.ppu * (st.fit || tu.fit || 1), cs = st.cell, w = wobble(b);
   var dir = ((Math.round((b.aim === undefined ? 2.36 : b.aim) / (Math.PI / 8)) % 16) + 16) % 16, rec = b.fire ? Math.max(0, 1 - (now() - b.fire) / 220) : 0;
   function cell(n, dx, dy) { ctx.drawImage(im, (n % 6) * cs, Math.floor(n / 6) * cs, cs, cs, -st.ax * k + dx, -st.ay * k + dy, cs * k, cs * k); }
   ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w[0], w[1]); if (b.lv === 0) ctx.globalAlpha = .55;
   if (dead) { cell(17, 0, 0); ctx.restore(); return; }
-  cell(16, 0, 0);
+  var pedestal = st.pedestal && img(st.pedestal);
+  if (ready(pedestal)) ctx.drawImage(pedestal, -st.ax * k, -st.ay * k, cs * k, cs * k);
+  else cell(16, 0, 0);
   if (st.band) { slingHead(b, st, dir, k, cell); ctx.restore(); return; }
   var ax = Math.cos(b.aim || 0) - Math.sin(b.aim || 0), ay = (Math.cos(b.aim || 0) + Math.sin(b.aim || 0)) * ISO;
   cell(dir, -ax * rec * 4, -ay * rec * 4);
@@ -1294,7 +1324,7 @@ function slingHead(b, st, dir, k, cell) {
 var WALLSET = null;   // live wall tiles of the scene being drawn, rebuilt each frame (was a scan of every building per wall)
 function buildWallSet(list) { var set = new Set(); for (var i = 0; i < list.length; i++) { var o = list[i]; if (o.k === 'wall' && !o.dead) set.add(o.x * 1000 + o.y); } WALLSET = { list: list, set: set }; }
 function drawWall(b, scene) {
-  var tier = clamp(Math.ceil(b.lv * 6 / MAX_LV), 1, 6), set = ART.walls[tier] || ART.walls['1']; if (!set) return;
+  var set = WALL_ART[clamp(b.lv || 1, 1, MAX_LV)]; if (!set) return;
   var list = scene.buildings, set2 = WALLSET && WALLSET.list === list ? WALLSET.set : null,
       has = set2 ? function (x, y) { return set2.has(x * 1000 + y); } : function (x, y) { return list.some(function (o) { return o.k === 'wall' && !o.dead && o.x === x && o.y === y; }); };
   if (b.dead) return;
@@ -1837,9 +1867,15 @@ function raidPreload() {
   var files = [], troop = function (k) { var u = U[k] || CATS[k]; if (u && ART.troops[u.art]) files.push(ART.troops[u.art].file); if (U[k]) { if (U[k].split) troop(U[k].split); if (U[k].summon) troop(U[k].summon); } };
   Object.keys(R.army).forEach(function (k) { if (R.army[k] > 0) troop(k); }); Object.keys(R.heroes).forEach(troop);
   R.troops.forEach(function (t) { troop(t.kind); });
-  R.buildings.forEach(function (b) { var d = B[b.k], st = stageOf(Math.max(1, b.lv)) - 1;
-    if (d.turret && ART.turrets[d.turret]) files.push(ART.turrets[d.turret].stages[st].file);
-    else if (d.art && ART.buildings[d.art]) { var ab = ART.buildings[d.art]; files.push(ab.stages[st].file); if (ab.rubble) files.push(ab.rubble.file); } });
+  R.buildings.forEach(function (b) { var d = B[b.k];
+    if (d.turret && ART.turrets[d.turret]) {
+      var turret = levelArt(b.lv, ART.turrets[d.turret].stages);
+      files.push(turret.file, turret.pedestal);
+    } else if (d.art && ART.buildings[d.art]) {
+      var ab = ART.buildings[d.art]; files.push(levelArt(b.lv, ab.stages).file); if (ab.rubble) files.push(ab.rubble.file);
+    } else if (d.wall) {
+      var wall = WALL_ART[clamp(b.lv || 1, 1, MAX_LV)]; Object.keys(wall).forEach(function (key) { files.push(wall[key].file); });
+    } });
   preload(files);
 }
 function enterRaid(n) { clearFx(); startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }

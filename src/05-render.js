@@ -300,21 +300,22 @@ function drawBuilding(b, scene) {
   var d = B[b.k], s = d.size, c = { x: b.x + s / 2, y: b.y + s / 2 };
   if (d.wall) return drawWall(b, scene);
   if (b.dead) { var art = d.turret ? null : ART.buildings[d.art].rubble; if (art) sprite(art, c.x, c.y); else drawTurret(b, c, true); if (b.deadAt) smoulder(c, b); return; }
-  var stage = stageOf(Math.max(1, b.lv));
   if (d.turret) drawTurret(b, c, false);
-  else sprite(ART.buildings[d.art].stages[stage - 1], c.x, c.y, { squash: wobble(b), alpha: b.lv === 0 ? .55 : 1 });
+  else sprite(levelArt(b.lv, ART.buildings[d.art].stages), c.x, c.y, { squash: wobble(b), alpha: b.lv === 0 ? .55 : 1 });
   if (b.up) drawScaffold(b, c);
   else if (b.boost && b.boost > now()) drawBoost(b, c);
   if (b.max && b.hp < b.max * .5) smoke(c, b);
 }
 function drawTurret(b, c, dead) {
-  var tu = ART.turrets[B[b.k].turret], st = tu.stages[stageOf(Math.max(1, b.lv)) - 1], im = img(st.file); if (!ready(im)) return;
+  var tu = ART.turrets[B[b.k].turret], st = levelArt(b.lv, tu.stages), im = img(st.file); if (!ready(im)) return;
   var p = toScreen(c.x, c.y), k = cam.s / st.ppu * (st.fit || tu.fit || 1), cs = st.cell, w = wobble(b);
   var dir = ((Math.round((b.aim === undefined ? 2.36 : b.aim) / (Math.PI / 8)) % 16) + 16) % 16, rec = b.fire ? Math.max(0, 1 - (now() - b.fire) / 220) : 0;
   function cell(n, dx, dy) { ctx.drawImage(im, (n % 6) * cs, Math.floor(n / 6) * cs, cs, cs, -st.ax * k + dx, -st.ay * k + dy, cs * k, cs * k); }
   ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w[0], w[1]); if (b.lv === 0) ctx.globalAlpha = .55;
   if (dead) { cell(17, 0, 0); ctx.restore(); return; }
-  cell(16, 0, 0);
+  var pedestal = st.pedestal && img(st.pedestal);
+  if (ready(pedestal)) ctx.drawImage(pedestal, -st.ax * k, -st.ay * k, cs * k, cs * k);
+  else cell(16, 0, 0);
   if (st.band) { slingHead(b, st, dir, k, cell); ctx.restore(); return; }
   var ax = Math.cos(b.aim || 0) - Math.sin(b.aim || 0), ay = (Math.cos(b.aim || 0) + Math.sin(b.aim || 0)) * ISO;
   cell(dir, -ax * rec * 4, -ay * rec * 4);
@@ -359,7 +360,7 @@ function slingHead(b, st, dir, k, cell) {
 var WALLSET = null;   // live wall tiles of the scene being drawn, rebuilt each frame (was a scan of every building per wall)
 function buildWallSet(list) { var set = new Set(); for (var i = 0; i < list.length; i++) { var o = list[i]; if (o.k === 'wall' && !o.dead) set.add(o.x * 1000 + o.y); } WALLSET = { list: list, set: set }; }
 function drawWall(b, scene) {
-  var tier = clamp(Math.ceil(b.lv * 6 / MAX_LV), 1, 6), set = ART.walls[tier] || ART.walls['1']; if (!set) return;
+  var set = WALL_ART[clamp(b.lv || 1, 1, MAX_LV)]; if (!set) return;
   var list = scene.buildings, set2 = WALLSET && WALLSET.list === list ? WALLSET.set : null,
       has = set2 ? function (x, y) { return set2.has(x * 1000 + y); } : function (x, y) { return list.some(function (o) { return o.k === 'wall' && !o.dead && o.x === x && o.y === y; }); };
   if (b.dead) return;

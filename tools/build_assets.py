@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image, ImageFilter, ImageDraw
 from building_colors import paint_materials
 from building_light import light_building
+from cartoon_paint import save_levels, save_turret, wall_levels
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/duck'
 R45 = os.path.join(SRC, 'r45')
@@ -36,8 +37,13 @@ def save_sprite(im, ox, oy, ppu, name, shadow_units=0):
     if shadow_units: im, ox, oy = contact_shadow(im, ox, oy, shadow_units * ppu * .42)
     bb = im.getbbox(); im = im.crop(bb); ox -= bb[0]; oy -= bb[1]
     if name.startswith('b_') and not name.endswith('_rubble'):
-        im = light_building(im)
-    im.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
+        _, kind, stage = name.split('_')
+        level = 3 * int(stage) - 2
+        save_levels(light_building(im), OUT, name, kind, range(level, level + 3), 86)
+    elif name.startswith('w_'):
+        save_levels(im, OUT, name, 'wall', wall_levels(int(name.split('_')[1])), 85)
+    else:
+        im.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
     return {'file': name + '.webp', 'ax': round(ox, 1), 'ay': round(oy, 1), 'ppu': round(ppu, 3), 'w': im.width, 'h': im.height}
 
 SIZE = {'hq': 3, 'camp': 3}
@@ -142,7 +148,7 @@ for key, src in TURRETS.items():
             to = lambda q: [round((q[0] * sres / bj['res'] + pad_px - x0) * sc + offh[0], 1), round((q[1] * sres / bj['res'] + pad_px - y0) * sc + offh[1], 1)]
             band = {'dirs': [{'tips': [to(t) for t in bj['dirs'][PICK[g]]['tips']], 'P': to(bj['dirs'][PICK[g]]['P']), 'R': to(bj['dirs'][PICK[g]]['R'])} for g in range(16)],
                     'bw': round(bj['bw'] * sres / bj['res'] * sc, 2), 'pw': round(bj['pw'] * sres / bj['res'] * sc, 2)}
-        name = f't_{key}_{n}'; sheet.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
+        name = f't_{key}_{n}'; save_turret(sheet, OUT, name, key, n, 86)
         stages.append({'file': name + '.webp', 'cell': CELL, 'ax': round((sox - x0) * sc + offx, 1), 'ay': round((soy - y0) * sc + offy, 1), 'ppu': round(ppu * sc, 3), 'tips': tips, 'fit': round(sfit, 3), **({'band': band} if band else {})})
     ART['turrets'][key] = {'stages': stages, 'fit': round(tfit, 3)}
     print('turret', key)

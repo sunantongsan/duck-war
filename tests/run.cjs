@@ -16,6 +16,18 @@ const g=s=>vm.runInContext(s,ctx);
 ok(g('window.duckReady===true'),'boot finished');
 ok(g('D.res.coin>=1000000'),'test build grants 1M duck coins');
 ok(g('Object.keys(B).every(k=>k==="wall"||ART.buildings&&true)'),'art data present');
+// The renderer and raid preload resolve the same fifteen level-specific paints.
+const artGroups = [...Object.values(ctx.ART.buildings), ...Object.values(ctx.ART.turrets)];
+const assets = path.join(root, 'web/assets');
+const present = file => fs.existsSync(path.join(assets, file));
+for (const group of artGroups) {
+  const paints = Array.from({length: ctx.MAX_LV}, (_, i) => ctx.levelArt(i + 1, group.stages));
+  const files = paints.map(p => p.pedestal || p.file);
+  ok(new Set(files).size === ctx.MAX_LV && files.every(present) &&
+    paints.every(p => present(p.file)), 'unique, packaged paints for ' + group.stages[0].file);
+}
+ok(ctx.WALL_ART.slice(1).every(parts => Object.values(parts).every(p => present(p.file))) &&
+  new Set(ctx.WALL_ART.slice(1).map(p => p.post.file)).size === ctx.MAX_LV, 'all fifteen wall paints');
 // economy: upgrade HQ and finish instantly with coins
 g('var hq=D.buildings.find(b=>b.k==="hq");D.res.honey=D.res.veggie=1e9;');
 ok(g('upgradeBuilding(hq)!==false&&!!hq.up'),'HQ upgrade starts');

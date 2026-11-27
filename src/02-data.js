@@ -2,6 +2,35 @@
 // cost(lv) = price to build (lv 1) or to upgrade to lv. res: which resource pays. time(lv) in seconds.
 var STAGES = 5, MAX_LV = 15;
 function stageOf(lv) { return Math.min(STAGES, Math.floor((Math.max(1, lv) - 1) / 3) + 1); }
+// Resolve prepainted level art once. Only visible files are decoded by img().
+function upgradeFile(file, offset) {
+  return offset ? file.replace('.webp', '_v' + (offset + 1) + '.webp') : file;
+}
+function levelArt(level, stages) {
+  var lv = clamp(level || 1, 1, MAX_LV);
+  return stages.byLevel[lv];
+}
+function indexLevelArt(stages, turret) {
+  stages.byLevel = [null];
+  for (var lv = 1; lv <= MAX_LV; lv++) {
+    var stage = stages[stageOf(lv) - 1], offset = (lv - 1) % 3;
+    var file = upgradeFile(stage.file, offset);
+    stages.byLevel.push(turret ? Object.assign({}, stage, { pedestal: offset ? file : null }) :
+      Object.assign({}, stage, { file: file }));
+  }
+}
+Object.keys(ART.buildings).forEach(function (key) { indexLevelArt(ART.buildings[key].stages, false); });
+Object.keys(ART.turrets).forEach(function (key) { indexLevelArt(ART.turrets[key].stages, true); });
+var WALL_ART = [null];
+for (var wallLv = 1; wallLv <= MAX_LV; wallLv++) {
+  var wallTier = Math.ceil(wallLv * 6 / MAX_LV), wallSet = ART.walls[wallTier] || ART.walls['1'];
+  var wallOffset = wallLv - 1 - Math.floor((wallTier - 1) * MAX_LV / 6);
+  var pieces = {};
+  Object.keys(wallSet || {}).forEach(function (key) {
+    pieces[key] = Object.assign({}, wallSet[key], { file: upgradeFile(wallSet[key].file, wallOffset) });
+  });
+  WALL_ART.push(pieces);
+}
 function grow(base, lv, k) { return Math.round(base * Math.pow(k || 1.55, lv - 1)); }
 
 var B = {
