@@ -247,6 +247,14 @@ function otherMenu() {
     var row = h('div', 'p-row sound-row');
     var c = h('button', 'btn', '⭐ เครดิต'); c.onclick = creditsMenu; row.appendChild(c);
     var ab = h('button', 'btn', 'ℹ️ เกี่ยวกับเกม'); ab.onclick = aboutMenu; row.appendChild(ab);
+    var privacy = h('button', 'btn', 'นโยบายความเป็นส่วนตัว');
+    privacy.onclick = function () {
+      openSheet('นโยบายความเป็นส่วนตัว', function (panel) {
+        panel.appendChild($('privacy-policy').content.cloneNode(true));
+        backRow(panel, otherMenu);
+      });
+    };
+    row.appendChild(privacy);
     body.appendChild(row); backRow(body, soundMenu);
   });
 }

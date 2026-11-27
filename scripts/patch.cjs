@@ -21,6 +21,11 @@ function build(output=path.join(root,'patch-dist')){
  for(const f of files){const bytes=content(f.path);fs.writeFileSync(path.join(output,'objects',f.sha256),bytes);let o=0;for(const c of f.chunks||[]){fs.writeFileSync(path.join(output,'objects',c.sha256),bytes.subarray(o,o+c.size));o+=c.size;}}
  const dir=path.join(output,'patches',config.channel,'native-'+config.nativeVersion);fs.mkdirSync(dir,{recursive:true});
  fs.writeFileSync(path.join(dir,'manifest.json'),JSON.stringify(manifest));
+ const privacy = fs.readFileSync(path.join(web, 'index.html'), 'utf8').match(/<template id="privacy-policy">([\s\S]*?)<\/template>/);
+ if (!privacy) throw Error('Missing in-game privacy policy');
+ const privacyDir = path.join(output, 'privacy');
+ fs.mkdirSync(privacyDir, {recursive:true});
+ fs.writeFileSync(path.join(privacyDir,'index.html'), '<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Duck War สงครามเป็ดเป็ด · นโยบายความเป็นส่วนตัว</title><style>body{max-width:46rem;margin:3rem auto;padding:0 1rem;font:1.05rem/1.7 system-ui;color:#213347}h1,h2{line-height:1.35}</style><main>' + privacy[1] + '</main></html>');
  // the playable web build (for quick tests in a browser): /play/
  const play=path.join(output,'play');fs.mkdirSync(path.join(play,'assets'),{recursive:true});
  for(const f of files)fs.writeFileSync(path.join(play,f.path),content(f.path));
