@@ -116,10 +116,18 @@ function boostWithVideo(b, done) {
   if (videosLeft() <= 0) { toast('ดูวิดีโอครบ ' + VIDEO_PER_DAY + ' ครั้งแล้ววันนี้'); return; }
   showRewardedVideo(function (ok) { if (!ok) { toast('ต้องดูวิดีโอจนจบถึงได้รางวัล'); return; } D.vids = (D.vids || 0) + 1; applyBoost(b); if (done) done(); });
 }
-// Rewarded video: the Android app provides window.DuckAds once an ad network is wired in.
-// Until then test builds show a 5-second stand-in so the flow can be tried end to end.
+// Native callbacks complete only the current request. A second tap keeps its original reward target.
 function showRewardedVideo(cb) {
-  if (window.DuckAds && window.DuckAds.showRewarded) { window.duckAdResult = function (ok) { window.duckAdResult = null; cb(!!ok); }; window.DuckAds.showRewarded(); return; }
+  if (window.DuckAds && window.DuckAds.showRewarded) {
+    if (window.duckAdResult) return;
+    window.duckAdResult = function (status) {
+      window.duckAdResult = null;
+      if (status === 'unavailable') { toast('วิดีโอยังไม่พร้อม ลองใหม่ภายหลัง'); return; }
+      cb(status === 'earned' || status === true);
+    };
+    window.DuckAds.showRewarded();
+    return;
+  }
   if (!TEST) { toast('วิดีโอยังไม่พร้อม ลองใหม่ภายหลัง'); return; }
   var o = document.createElement('div'); o.className = 'adfake'; document.body.appendChild(o); var left = 5;
   (function tick() { o.innerHTML = '<div>📺 วิดีโอโฆษณา (ตัวอย่างสำหรับทดสอบ)</div><b>' + left + '</b>'; if (left-- > 0) setTimeout(tick, 1000); else { o.remove(); cb(true); } })();

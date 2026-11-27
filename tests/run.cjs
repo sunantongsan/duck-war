@@ -146,4 +146,17 @@ g('D=newGame();D.res.coin=250;transferDuck(0,"existing",500,0)');
 ok(g('D.res.coin===750'), 'a zero-balance legacy account still gets compensation');
 g('D=newGame();D.res.coin=250;transferDuck(0,"new",0,500)');
 ok(g('D.res.coin===750 && D.novaTransfer.bonus===0'), 'new players receive only the regular welcome grant');
+// A pending rewarded video belongs to the first tap, even if a second building is selected.
+let adRequests = 0;
+const rewardEvents = [];
+ctx.DuckAds = {showRewarded() { adRequests++; }};
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.showRewardedVideo(() => rewardEvents.push('second tap'));
+ctx.duckAdResult('earned');
+ok(adRequests === 1 && rewardEvents.join() === 'true' && ctx.duckAdResult === null, 'one earned video completes its original request once');
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.duckAdResult('closed');
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.duckAdResult('unavailable');
+ok(rewardEvents.join() === 'true,false' && ctx.duckAdResult === null, 'closing an ad or getting no fill never earns a boost');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

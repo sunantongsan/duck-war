@@ -551,10 +551,18 @@ function boostWithVideo(b, done) {
   if (videosLeft() <= 0) { toast('ดูวิดีโอครบ ' + VIDEO_PER_DAY + ' ครั้งแล้ววันนี้'); return; }
   showRewardedVideo(function (ok) { if (!ok) { toast('ต้องดูวิดีโอจนจบถึงได้รางวัล'); return; } D.vids = (D.vids || 0) + 1; applyBoost(b); if (done) done(); });
 }
-// Rewarded video: the Android app provides window.DuckAds once an ad network is wired in.
-// Until then test builds show a 5-second stand-in so the flow can be tried end to end.
+// Native callbacks complete only the current request. A second tap keeps its original reward target.
 function showRewardedVideo(cb) {
-  if (window.DuckAds && window.DuckAds.showRewarded) { window.duckAdResult = function (ok) { window.duckAdResult = null; cb(!!ok); }; window.DuckAds.showRewarded(); return; }
+  if (window.DuckAds && window.DuckAds.showRewarded) {
+    if (window.duckAdResult) return;
+    window.duckAdResult = function (status) {
+      window.duckAdResult = null;
+      if (status === 'unavailable') { toast('วิดีโอยังไม่พร้อม ลองใหม่ภายหลัง'); return; }
+      cb(status === 'earned' || status === true);
+    };
+    window.DuckAds.showRewarded();
+    return;
+  }
   if (!TEST) { toast('วิดีโอยังไม่พร้อม ลองใหม่ภายหลัง'); return; }
   var o = document.createElement('div'); o.className = 'adfake'; document.body.appendChild(o); var left = 5;
   (function tick() { o.innerHTML = '<div>📺 วิดีโอโฆษณา (ตัวอย่างสำหรับทดสอบ)</div><b>' + left + '</b>'; if (left-- > 0) setTimeout(tick, 1000); else { o.remove(); cb(true); } })();
@@ -1791,15 +1799,24 @@ var screen = 'home', selected = null, placing = null, moving = null;
 function h(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; }
 function icon(r) { return '<i class="ic ic-' + r + '"></i>'; }
 function costTag(r, n) { return '<span class="cost' + (D.res[r] >= n ? '' : ' short') + '">' + icon(r) + fmt(n) + '</span>'; }
-function closeSheet() { $('sheet').classList.remove('open'); $('sheet').innerHTML = ''; }
+var bannerVisible = null;
+function syncHomeBanner() {
+  if (!window.DuckAds || !window.DuckAds.bannerLayoutAllowed) return;
+  var visible = screen === 'home' && !$('sheet').classList.contains('open');
+  if (visible === bannerVisible) return;
+  bannerVisible = visible;
+  window.DuckAds.bannerLayoutAllowed(visible);
+}
+function closeSheet() { $('sheet').classList.remove('open'); $('sheet').innerHTML = ''; syncHomeBanner(); }
 function openSheet(title, body) {
   var s = $('sheet'), old = s.querySelector('.sheet-body'), keep = s.classList.contains('open') && s.dataset.title === title ? (old ? old.scrollTop : 0) : 0;   // refreshing the same sheet keeps its scroll
   s.dataset.title = title; s.innerHTML = ''; var head = h('div', 'sheet-head', '<b>' + title + '</b>'); var x = h('button', 'x', '✕'); x.onclick = closeSheet; head.appendChild(x);
-  s.appendChild(head); var b = h('div', 'sheet-body'); s.appendChild(b); body(b); s.classList.add('open'); b.scrollTop = keep;
+  s.appendChild(head); var b = h('div', 'sheet-body'); s.appendChild(b); body(b); s.classList.add('open'); b.scrollTop = keep; syncHomeBanner();
 }
 
 // ---------- HUD ----------
 function hud() {
+  syncHomeBanner();
   var top = $('res'); top.innerHTML = '';
   ['honey', 'veggie', 'syrup', 'coin'].forEach(function (r) {
     if (r === 'syrup' && hqLv() < 5 && !D.res.syrup) return;
@@ -1996,7 +2013,11 @@ function showResult() {
   var r = R.result; sfx(r.stars ? 'win' : 'lose'); openSheet(r.stars ? 'ชนะ!' : 'แพ้แล้ว', function (body) {
     body.appendChild(h('div', 'result-stars', '★★★'.slice(0, r.stars) + '<em>' + '★★★'.slice(r.stars) + '</em>'));
     body.appendChild(h('p', 'result', 'ทำลาย ' + Math.floor(r.pct * 100) + '% · ได้ ' + icon('honey') + fmt(r.got.honey) + ' ' + icon('veggie') + fmt(r.got.veggie) + (r.got.syrup ? ' ' + icon('syrup') + fmt(r.got.syrup) : '') + (r.coins ? ' ' + icon('coin') + r.coins : '')));
-    var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = goHome; body.appendChild(b);
+    var b = h('button', 'btn green big', 'กลับบ้าน'); b.onclick = function () {
+      if (!R || R.result !== r) return;
+      goHome();
+      if (window.DuckAds && window.DuckAds.levelComplete) window.DuckAds.levelComplete();
+    }; body.appendChild(b);
   });
 }
 function goHome() { clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
@@ -2009,6 +2030,10 @@ function soundMenu() {
     var m = h('button', 'btn ' + (SND.music ? 'green' : ''), '🎵 เพลง ' + (SND.music ? 'เปิด' : 'ปิด')); m.onclick = function () { setMusic(!SND.music); soundMenu(); };
     row.appendChild(a); row.appendChild(m); body.appendChild(row);
     var gr = h('div', 'p-row sound-row'), gb = h('button', 'btn', '🌳 พื้นแผนที่: ' + GROUNDS[D.ground || 0].name); gb.onclick = function () { groundPicker(false); }; gr.appendChild(gb);
+    if (window.DuckAds && window.DuckAds.privacyRequired && window.DuckAds.privacyRequired()) {
+      var privacy = h('button', 'btn', 'ความเป็นส่วนตัวของโฆษณา');
+      privacy.onclick = function () { window.DuckAds.settings(); }; gr.appendChild(privacy);
+    }
     var ob = h('button', 'btn', '📋 อื่นๆ'); ob.onclick = otherMenu; gr.appendChild(ob); body.appendChild(gr);
   });
 }

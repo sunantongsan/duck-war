@@ -21,6 +21,23 @@ public class MainActivity extends Activity {
     private WebView game;
     private GamePatcher patcher;
     private DuckTransfer transfer;
+    private GameAds ads;
+    private LinearLayout gameLayout;
+    private View displayedBanner;
+    void showBanner(View banner) {
+        if (displayedBanner == banner) return;
+        if (displayedBanner != null) gameLayout.removeView(displayedBanner);
+        displayedBanner = banner;
+        if (banner != null) {
+            LinearLayout.LayoutParams slot = new LinearLayout.LayoutParams(-2, -2);
+            slot.gravity = Gravity.CENTER_HORIZONTAL;
+            gameLayout.addView(banner, slot);
+        }
+    }
+    void rewardResult(String status) {
+        if (!destroyed) game.evaluateJavascript("window.duckAdResult && window.duckAdResult(" +
+            org.json.JSONObject.quote(status) + ")", null);
+    }
     void transferEvent(String event, org.json.JSONObject data) {
         if (!destroyed) game.evaluateJavascript("window.novaAccountEvent && window.novaAccountEvent(" +
             org.json.JSONObject.quote(event) + "," + data.toString() + ")", null);
@@ -42,7 +59,7 @@ public class MainActivity extends Activity {
     private void finishBoot() {
         game.evaluateJavascript("!!window.duckReady && !window.duckError", value -> {
             if (destroyed) return;
-            if ("true".equals(value)) { if (!ready) transfer.callback(getIntent().getData()); ready = true; welcome.setVisibility(View.GONE); patcher.bootSucceeded(); }
+            if ("true".equals(value)) { if (!ready) { transfer.callback(getIntent().getData()); ads.begin(); } ready = true; welcome.setVisibility(View.GONE); patcher.bootSucceeded(); }
             else if (!rolledBack && patcher.rollback()) { rolledBack = true; showProgress("กำลังกู้คืนข้อมูลเกมชุดก่อนหน้า…", -1); loadGame(); }
             else showProgress("เปิดเกมไม่สำเร็จ กรุณาปิดแล้วเปิดเกมอีกครั้ง", 0);
         });
@@ -69,6 +86,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setAllowFileAccess(false); s.setAllowContentAccess(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); s.setMediaPlaybackRequiresUserGesture(false);
         WebViewAssetLoader assets = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
+        ads = new GameAds(this);
+        game.addJavascriptInterface(ads, "DuckAds");
         transfer = new DuckTransfer(this);
         game.addJavascriptInterface(transfer,"DuckTransfer");
         game.addJavascriptInterface(new Haptics(game), "DuckHaptics");
@@ -86,7 +105,10 @@ public class MainActivity extends Activity {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return true; }
         });
         FrameLayout root = new FrameLayout(this);
-        root.addView(game, new FrameLayout.LayoutParams(-1, -1));
+        gameLayout = new LinearLayout(this);
+        gameLayout.setOrientation(LinearLayout.VERTICAL);
+        gameLayout.addView(game, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(gameLayout, new FrameLayout.LayoutParams(-1, -1));
         welcome = createWelcome(); root.addView(welcome, new FrameLayout.LayoutParams(-1, -1));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int l = 0, t = 0, r = 0, b = 0;
@@ -107,10 +129,10 @@ public class MainActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0, () -> game.evaluateJavascript("window.duckBack && window.duckBack()", null));
     }
     @Override public void onBackPressed() { game.evaluateJavascript("window.duckBack && window.duckBack()", null); }
-    @Override protected void onPause() { game.evaluateJavascript("window.duckPause && window.duckPause()", null); game.onPause(); super.onPause(); }
-    @Override protected void onResume() { super.onResume(); immersive(); game.onResume(); }
+    @Override protected void onPause() { game.evaluateJavascript("window.duckPause && window.duckPause()", null); ads.pause(); game.onPause(); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); immersive(); game.onResume(); ads.resume(); }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); if (focused) immersive(); }
-    @Override protected void onDestroy() { destroyed = true; if (transfer != null) transfer.destroy(); if (patcher != null) patcher.destroy(); game.destroy(); super.onDestroy(); }
+    @Override protected void onDestroy() { destroyed = true; ads.destroy(); if (transfer != null) transfer.destroy(); if (patcher != null) patcher.destroy(); game.destroy(); super.onDestroy(); }
     private void immersive() {
         android.view.Window w = getWindow(); View decor = w.getDecorView();
         if (android.os.Build.VERSION.SDK_INT >= 28) {
