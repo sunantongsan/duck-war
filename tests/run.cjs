@@ -139,4 +139,11 @@ g('turretTick(gun,.20); var bread=R.shots[0]; shotTick(bread,.15); trailFx(bread
 ok(g('bread.kind==="toast" && bread.z>bread.fz && SMOKE.some(p=>p.kind==="grey")'), 'toast rises with a smoke trail');
 g('var neighbour=Object.assign({},dummy,{x:dummy.x+.7}), flyer=Object.assign({},dummy,{kind:"plane"}); R.troops.push(neighbour,flyer); shotTick(bread,bread.dur)');
 ok(g('dummy.hp<900 && neighbour.hp<900 && flyer.hp===900 && PARTS.some(p=>p.k==="crumb")'), 'burst scatters crumbs and damages nearby ground troops');
+// Both receipts may apply. Starter funds remain independent from the transfer.
+g('D=newGame();D.res.coin=250;transferDuck(1200,"owner",500,500);');
+ok(g('D.res.coin===2450 && !transferDuck(1200,"owner",500,500) && loadSave().res.coin===2450'), 'separate welcome and legacy rewards are committed once');
+g('D=newGame();D.res.coin=250;transferDuck(0,"existing",500,0)');
+ok(g('D.res.coin===750'), 'a zero-balance legacy account still gets compensation');
+g('D=newGame();D.res.coin=250;transferDuck(0,"new",0,500)');
+ok(g('D.res.coin===750 && D.novaTransfer.bonus===0'), 'new players receive only the regular welcome grant');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

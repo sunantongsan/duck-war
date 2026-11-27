@@ -20,6 +20,14 @@ public class MainActivity extends Activity {
     private static final String GAME_URL = "https://appassets.androidplatform.net/assets/index.html";
     private WebView game;
     private GamePatcher patcher;
+    private DuckTransfer transfer;
+    void transferEvent(String event, org.json.JSONObject data) {
+        if (!destroyed) game.evaluateJavascript("window.novaAccountEvent && window.novaAccountEvent(" +
+            org.json.JSONObject.quote(event) + "," + data.toString() + ")", null);
+    }
+    @Override protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent); setIntent(intent); transfer.callback(intent.getData());
+    }
     private FrameLayout welcome;
     private TextView status;
     private ProgressBar progress;
@@ -34,7 +42,7 @@ public class MainActivity extends Activity {
     private void finishBoot() {
         game.evaluateJavascript("!!window.duckReady && !window.duckError", value -> {
             if (destroyed) return;
-            if ("true".equals(value)) { ready = true; welcome.setVisibility(View.GONE); patcher.bootSucceeded(); }
+            if ("true".equals(value)) { if (!ready) transfer.callback(getIntent().getData()); ready = true; welcome.setVisibility(View.GONE); patcher.bootSucceeded(); }
             else if (!rolledBack && patcher.rollback()) { rolledBack = true; showProgress("กำลังกู้คืนข้อมูลเกมชุดก่อนหน้า…", -1); loadGame(); }
             else showProgress("เปิดเกมไม่สำเร็จ กรุณาปิดแล้วเปิดเกมอีกครั้ง", 0);
         });
@@ -61,6 +69,8 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setAllowFileAccess(false); s.setAllowContentAccess(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); s.setMediaPlaybackRequiresUserGesture(false);
         WebViewAssetLoader assets = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
+        transfer = new DuckTransfer(this);
+        game.addJavascriptInterface(transfer,"DuckTransfer");
         game.addJavascriptInterface(new Haptics(game), "DuckHaptics");
         game.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) { if (url.equals(GAME_URL)) { finishBoot(); immersive(); } }
@@ -100,7 +110,7 @@ public class MainActivity extends Activity {
     @Override protected void onPause() { game.evaluateJavascript("window.duckPause && window.duckPause()", null); game.onPause(); super.onPause(); }
     @Override protected void onResume() { super.onResume(); immersive(); game.onResume(); }
     @Override public void onWindowFocusChanged(boolean focused) { super.onWindowFocusChanged(focused); if (focused) immersive(); }
-    @Override protected void onDestroy() { destroyed = true; if (patcher != null) patcher.destroy(); game.destroy(); super.onDestroy(); }
+    @Override protected void onDestroy() { destroyed = true; if (transfer != null) transfer.destroy(); if (patcher != null) patcher.destroy(); game.destroy(); super.onDestroy(); }
     private void immersive() {
         android.view.Window w = getWindow(); View decor = w.getDecorView();
         if (android.os.Build.VERSION.SDK_INT >= 28) {

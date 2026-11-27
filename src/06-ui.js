@@ -230,6 +230,10 @@ function otherMenu() {
     var row = h('div', 'p-row sound-row');
     var c = h('button', 'btn', '⭐ เครดิต'); c.onclick = creditsMenu; row.appendChild(c);
     var ab = h('button', 'btn', 'ℹ️ เกี่ยวกับเกม'); ab.onclick = aboutMenu; row.appendChild(ab);
+    if (window.DuckTransfer) {
+      var migrate = h('button', 'btn', D.novaTransfer ? 'จดหมายจากผู้พันเป็ด' : 'บัญชีและโบนัส Duck');
+      migrate.onclick = function () { beginNovaTransfer(true); }; row.appendChild(migrate);
+    }
     body.appendChild(row); backRow(body, soundMenu);
   });
 }

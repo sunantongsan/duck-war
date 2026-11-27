@@ -9,6 +9,8 @@ android {
         targetSdk 36
         versionCode 45
         versionName '2.0.0'
+        buildConfigField 'String', 'NOVA_CLOUD_URL', '"https://uzinxxeadejmzxqmqqtx.supabase.co"'
+        buildConfigField 'String', 'NOVA_CLOUD_KEY', '"sb_publishable_4R8VSfnmuFq6hAgWRtDX6Q_IcSVh82m"'
         // Content patches (game.js, index.html, art) are downloaded from here at start-up.
         buildConfigField 'String', 'PATCH_CHANNEL', '"live"'
         buildConfigField 'String', 'PATCH_ORIGIN', groovy.json.JsonOutput.toJson(providers.gradleProperty('patchOrigin').getOrElse(''))
