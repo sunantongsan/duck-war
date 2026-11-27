@@ -8,6 +8,7 @@ import json, math, os, sys
 import numpy as np
 from PIL import Image, ImageFilter, ImageDraw
 from building_colors import paint_materials
+from building_light import light_building
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/duck'
 R45 = os.path.join(SRC, 'r45')
@@ -34,6 +35,8 @@ def contact_shadow(im, ox, oy, radius_px):
 def save_sprite(im, ox, oy, ppu, name, shadow_units=0):
     if shadow_units: im, ox, oy = contact_shadow(im, ox, oy, shadow_units * ppu * .42)
     bb = im.getbbox(); im = im.crop(bb); ox -= bb[0]; oy -= bb[1]
+    if name.startswith('b_') and not name.endswith('_rubble'):
+        im = light_building(im)
     im.save(os.path.join(OUT, name + '.webp'), 'WEBP', quality=Q, method=6)
     return {'file': name + '.webp', 'ax': round(ox, 1), 'ay': round(oy, 1), 'ppu': round(ppu, 3), 'w': im.width, 'h': im.height}
 
@@ -124,14 +127,14 @@ for key, src in TURRETS.items():
         for dgame in range(16):
             hi = PICK[dgame]
             c, offx, offy = cell(heads[hi]); offh = (offx, offy)
-            sheet.alpha_composite(paint_materials(c, key, n), ((dgame % 6) * CELL, (dgame // 6) * CELL))
+            sheet.alpha_composite(light_building(paint_materials(c, key, n)), ((dgame % 6) * CELL, (dgame // 6) * CELL))
             _, sx, sy = head_angle(hi); pts = np.argwhere(np.array(heads[hi].split()[3]) > 200)
             if len(pts):
                 cy, cx = pts.mean(0); q = pts[((pts[:, 1] - cx) * sx + (pts[:, 0] - cy) * sy).argmax()]
                 tips.append([round((q[1] - x0) * sc + offx, 1), round((q[0] - y0) * sc + offy, 1)])
             else: tips.append([CELL / 2, CELL / 2])
         c, offx, offy = cell(base)
-        sheet.alpha_composite(paint_materials(c, key, n, turret_base=True), (4 * CELL, 2 * CELL))
+        sheet.alpha_composite(light_building(paint_materials(c, key, n, turret_base=True)), (4 * CELL, 2 * CELL))
         c2, _, _ = cell(rub); sheet.alpha_composite(c2, (5 * CELL, 2 * CELL))
         band = None
         if os.path.exists(os.path.join(d, 'band.json')):
