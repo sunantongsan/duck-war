@@ -139,4 +139,17 @@ g('turretTick(gun,.20); var bread=R.shots[0]; shotTick(bread,.15); trailFx(bread
 ok(g('bread.kind==="toast" && bread.z>bread.fz && SMOKE.some(p=>p.kind==="grey")'), 'toast rises with a smoke trail');
 g('var neighbour=Object.assign({},dummy,{x:dummy.x+.7}), flyer=Object.assign({},dummy,{kind:"plane"}); R.troops.push(neighbour,flyer); shotTick(bread,bread.dur)');
 ok(g('dummy.hp<900 && neighbour.hp<900 && flyer.hp===900 && PARTS.some(p=>p.k==="crumb")'), 'burst scatters crumbs and damages nearby ground troops');
+// A pending rewarded video belongs to the first tap, even if a second building is selected.
+let adRequests = 0;
+const rewardEvents = [];
+ctx.DuckAds = {showRewarded() { adRequests++; }};
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.showRewardedVideo(() => rewardEvents.push('second tap'));
+ctx.duckAdResult('earned');
+ok(adRequests === 1 && rewardEvents.join() === 'true' && ctx.duckAdResult === null, 'one earned video completes its original request once');
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.duckAdResult('closed');
+ctx.showRewardedVideo(earned => rewardEvents.push(earned));
+ctx.duckAdResult('unavailable');
+ok(rewardEvents.join() === 'true,false' && ctx.duckAdResult === null, 'closing an ad or getting no fill never earns a boost');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);
