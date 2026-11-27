@@ -145,6 +145,11 @@ var SFX = {
   swing: function () { noise({ type: 'bandpass', f: 400, f2: 1800, q: 1.2, vol: .14, a: .03, d: .14 }); },
   // ---------- defenses ----------
   twang: function () { tone({ f: 180, f2: 120, type: 'sawtooth', vol: .14, a: .003, d: .3, vib: 22, vibAmt: 18, bp: 700, q: 2 }); noise({ type: 'bandpass', f: 1800, q: 2, vol: .12, d: .05 }); tone({ f: 70, f2: 45, type: 'sine', vol: .25, d: .12 }); },
+  toaster: function () {
+    tone({ f: 1450, f2: 1430, type: 'sine', vol: .10, d: .19 });
+    tone({ f: 2190, f2: 2110, type: 'sine', vol: .04, d: .14 });
+    noise({ type: 'highpass', f: 1200, vol: .09, d: .045 });
+  },
   cooker: function () { noise({ type: 'highpass', f: 2500, vol: .22, a: .01, d: .35 }); tone({ f: 120, f2: 50, type: 'sine', vol: .45, d: .2, at: .02 }); noise({ type: 'lowpass', f: 500, vol: .2, d: .12, at: .02 }); tone({ f: 1900, f2: 2100, type: 'sine', vol: .05, d: .25, at: .05 }); },
   spray: function () { noise({ type: 'bandpass', f: 3200, f2: 1800, q: 1.5, vol: .16, a: .02, d: .3 }); tone({ f: 200, f2: 140, type: 'sine', vol: .12, d: .1 }); },
   flame: function () { noise({ type: 'bandpass', f: 400, f2: 1600, q: .7, vol: .3, a: .04, d: .35 }); for (var i = 0; i < 4; i++) noise({ type: 'highpass', f: 4000, vol: .06, d: .02, at: .05 + Math.random() * .25 }); },

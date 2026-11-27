@@ -11,7 +11,11 @@ function catBase(n) {
   put('hq', C, C, hq);
   var def = ['slingshot', 'slingshot', 'boxtower', 'slingshot', 'mortar', 'boxtower', 'watergun', 'chili', 'mortar', 'boxtower', 'slingshot'];
   var nDef = Math.min(def.length, 1 + Math.floor(n * .8));
-  for (var i = 0; i < nDef; i++) scatter(def[i], lv(hq - 1), [3, 5.5]);
+  for (var i = 0; i < nDef; i++) {
+    var defenseLv = lv(hq - 1);
+    if (def[i] === 'mortar' && n > 24) defenseLv = Math.min(TOASTER_LEVELS, defenseLv + Math.floor((n - 22) / 3));
+    scatter(def[i], defenseLv, [3, 5.5]);
+  }
   ['honeyjar', 'veggiejar'].forEach(function (k) { for (var j = 0; j < Math.min(3, 1 + Math.floor(n / 3)); j++) scatter(k, lv(hq - 1), [2.5, 5]); });
   if (hq >= 5) scatter('syrupjar', lv(hq - 2), [2, 4]);
   // wall ring around the core
@@ -170,8 +174,8 @@ function damage(target, amount, from) {
       sfx(target.side === 'cat' ? 'meow' : 'duckdie'); R.fx.push({ t: 'puff', x: target.x, y: target.y, life: 1.2, max: 1.2 }); }
   }
 }
-var TURRET_SFX = { slingshot: 'twang', boxtower: 'pew', mortar: 'cooker', watergun: 'spray', chili: 'flame' };
-var LAND_SFX = { rock: 'stone', egg: 'boom', water: 'water', chili: 'sizzle', tomato: 'squish', cracker: 'cracker', pebble: 'thud', feather: 'thud', magic: 'chime' };
+var TURRET_SFX = { slingshot: 'twang', boxtower: 'pew', mortar: 'toaster', watergun: 'spray', chili: 'flame' };
+var LAND_SFX = { rock: 'stone', toast: 'boom', water: 'water', chili: 'sizzle', tomato: 'squish', cracker: 'cracker', pebble: 'thud', feather: 'thud', magic: 'chime' };
 var CRY = { fork: 'quackHi', thief: 'quackHi', digger: 'quackHi', duckling: 'peep', sling: 'quackHi', giant: 'quackLo', pot: 'quackLo', bomber: 'quackHi', chef: 'quack', nurse: 'quack',
   witch: 'cackle', dog: 'bark', h_king: 'bark', egret: 'squawk', h_queen: 'squawk', pig: 'oink', mop: 'quackHi', plane: 'wee', kite: 'wee', prop: 'wee', fan: 'quackLo', fanlet: 'peep', balloon: 'quackHi', h_colonel: 'quackLo' };
 var ATK_SFX = { sling: 'pew', mop: 'whirl', plane: 'swoosh', kite: 'swoosh', fan: 'gust', fanlet: 'gust', giant: 'swing', pot: 'swing', h_colonel: 'swing', pig: 'oink', prop: 'swing' };
@@ -179,7 +183,7 @@ var BIG_HIT = { giant: 1, pot: 1, egret: 1, dog: 1, pig: 1, cat_king: 1 };
 function shoot(from, to, kind, dmg, splash, speed, sx, sy, sz) {
   var tx = to.k ? center(to).x : to.x, ty = to.k ? center(to).y : to.y, d = Math.hypot(tx - sx, ty - sy);
   var tz = to.k ? 0 : airAlt(to) * .9; sz = (sz || .8) + (from && !from.k ? airAlt(from) * .85 : 0);
-  R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'egg' ? 3 : kind === 'rock' ? .8 : .3 });
+  R.shots.push({ kind: kind, x: sx, y: sy, z: sz, fx: sx, fy: sy, fz: sz, tz: tz, tx: tx, ty: ty, t: 0, dur: Math.max(.15, d / speed), target: to, dmg: dmg, splash: splash || 0, from: from, arc: kind === 'toast' ? 3 : kind === 'rock' ? .8 : .3 });
   muzzleFx(kind, sx, sy, sz, from);
 }
 function troopTick(t, dt) {
@@ -299,17 +303,30 @@ function catTick(t, dt) {
   var sx0 = t.x, sy0 = t.y; step(t, t.stroll.x, t.stroll.y, c.speed * .35, dt);
   if (inBuilding(t.x, t.y) && !inBuilding(sx0, sy0)) { t.x = sx0; t.y = sy0; t.stroll = null; }   // walk round buildings, not through them
 }
+function toasterFacing(b) {
+  return b.aim !== undefined && Math.cos(b.aim) - Math.sin(b.aim) > 0 ? -1 : 1;
+}
 function turretTick(b, dt) {
   var d = B[b.k]; if (d.kind !== 'defense' || b.dead) return; b.cool -= dt;
   var c = center(b), lv = b.lv, range = d.range, r2 = range * range, m2 = (d.minRange || 0) * (d.minRange || 0), target = null, best = 1e9, T = R.now || now(), ducks = R.ducks || R.troops;
   for (var i = 0; i < ducks.length; i++) { var o = ducks[i]; if (o.dead || o.side !== 'duck' || o.under || o.invis > T) continue; var air = !!U[o.kind].air; if (air ? !d.air : !d.ground) continue;
     var dx = o.x - c.x, dy = o.y - c.y, dd = dx * dx + dy * dy; if (dd <= r2 && dd >= m2 && dd < best) { best = dd; target = o; } }
-  if (!target) return;
+  if (!target) { b.press = 0; return; }
   var want = Math.atan2(target.y - c.y, target.x - c.x), diff = Math.atan2(Math.sin(want - b.aim), Math.cos(want - b.aim));
   b.aim += clamp(diff, -6 * dt, 6 * dt);
+  if (d.shot === 'toast' && b.cool <= .38 && Math.abs(diff) < .35) {
+    b.press = Math.min(.38, (b.press || 0) + dt);
+    if (b.press < .38) return;
+  }
   if (b.cool <= 0 && Math.abs(diff) < .35) {
     b.cool = d.rate; b.fire = T; sfx(TURRET_SFX[b.k] || 'shot');
-    shoot(b, target, d.shot, grow(d.dmg, lv, 1.17), d.splash, d.shot === 'egg' ? 6 : 12, c.x + Math.cos(b.aim) * .6, c.y + Math.sin(b.aim) * .6, 1.2);
+    if (d.shot === 'toast') {
+      b.press = 0;
+      var side = toasterFacing(b);
+      shoot(b, target, 'toast', grow(d.dmg, lv, 1.17), d.splash, 6, c.x - side * .20, c.y + side * .20, 1.9 + .08 * Math.floor((lv - 1) / 4));
+    } else {
+      shoot(b, target, d.shot, grow(d.dmg, lv, 1.17), d.splash, 12, c.x + Math.cos(b.aim) * .6, c.y + Math.sin(b.aim) * .6, 1.2);
+    }
   }
 }
 function shotTick(s, dt) {
@@ -319,7 +336,7 @@ function shotTick(s, dt) {
   if (k < 1) return false;
   if (s.splash) { R.troops.concat(R.buildings).forEach(function (o) { if (o.dead) return; var ox = o.k ? center(o).x : o.x, oy = o.k ? center(o).y : o.y;
       if ((s.from.k ? !o.k && o.side === 'duck' && !o.under && (!U[o.kind].air || B[s.from.k].air) : o.k) && Math.hypot(ox - s.tx, oy - s.ty) <= s.splash) damage(o, s.dmg, s.from); });
-    R.fx.push({ t: s.kind === 'cracker' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); impactFx(s.kind, s.tx, s.ty); sfx(LAND_SFX[s.kind] || 'splat'); }
+    R.fx.push({ t: s.kind === 'cracker' || s.kind === 'toast' ? 'boom' : 'splat', x: s.tx, y: s.ty, life: s.kind === 'tomato' ? .9 : .5, max: s.kind === 'tomato' ? .9 : .5, kind: s.kind, size: s.kind === 'cracker' ? 1 : s.splash, seed: Math.random() * 100 }); impactFx(s.kind, s.tx, s.ty); sfx(LAND_SFX[s.kind] || 'splat'); }
   else if (s.target) { sfx(LAND_SFX[s.kind] || 'thud'); impactFx(s.kind, s.tx, s.ty); damage(s.target, s.dmg, s.from); if (R.fx.length < 160) R.fx.push({ t: 'hit', x: s.tx, y: s.ty, life: .25, max: .25, kind: s.kind }); }
   return true;
 }

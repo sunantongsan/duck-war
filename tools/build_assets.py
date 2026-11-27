@@ -103,7 +103,7 @@ def head_angle(i):
     sx = fx * math.cos(Y) + fy * math.sin(Y); sy = (fx * math.sin(Y) - fy * math.cos(Y)) * math.sin(E)
     return math.atan2(sy, sx), sx, sy
 PICK = [min(range(16), key=lambda i: abs(math.atan2(math.sin(head_angle(i)[0] - game_angle_screen(d)), math.cos(head_angle(i)[0] - game_angle_screen(d))))) for d in range(16)]
-TURRETS = {'slingshot': 'sling', 'boxtower': 'boxtower', 'mortar': 'mortar', 'watergun': 'aa', 'chili': 'chef', 'rockets': 'rocket', 'fan': 'fan', 'lens': 'lens'}
+TURRETS = {'slingshot': 'sling', 'boxtower': 'boxtower', 'watergun': 'aa', 'chili': 'chef', 'rockets': 'rocket', 'fan': 'fan', 'lens': 'lens'}
 CELL = 192
 for key, src in TURRETS.items():
     if keep('turrets', key): continue

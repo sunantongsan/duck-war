@@ -26,7 +26,7 @@ function shake(a) { SHAKE.a = Math.min(7, Math.max(SHAKE.a, a)); }
 function muzzleFx(kind, x, y, z, from) { // a shot leaves: flash + puff at the muzzle
   if (kind === 'rock') { burst(x, y, z, 6, 'dot', ['#bda88a', '#8a7a6a'], 1.6, 1, .45, 3); ring(x, y, .5, 'rgba(255,240,200,', .3, 3); }
   else if (kind === 'pebble') burst(x, y, z, 3, 'spark', ['#fff1c4', '#ffd36b'], 3, .6, .2, 2);
-  else if (kind === 'egg') { emitSmoke(x, y, z, 'grey', .9, 3); burst(x, y, z, 10, 'ember', ['#ffffff', '#dfe8ee'], 1.2, 2.2, .6, 4); shake(2); }   // the pressure cooker vents a gush of steam
+  else if (kind === 'toast') { emitSmoke(x, y, z, 'light', .45, 2); burst(x, y, z, 5, 'crumb', ['#ffcf75', '#bc6938'], .9, 1.4, .35, 2); }
   else if (kind === 'water') burst(x, y, z, 9, 'drop', ['#8fe0ff', '#d4f4ff', '#4cc2ff'], 2.6, 1.2, .5, 3);
   else if (kind === 'chili') burst(x, y, z, 12, 'ember', ['#ffef7a', '#ffae2b', '#ff5a1a', '#e3261a'], 2.2, 1.2, .45, 4.5);
   else if (kind === 'tomato') burst(x, y, z, 3, 'drop', ['#e8231a'], .8, -.5, .4, 2.5);
@@ -35,17 +35,28 @@ function muzzleFx(kind, x, y, z, from) { // a shot leaves: flash + puff at the m
   else if (kind === 'cracker') burst(x, y, z, 4, 'spark', ['#ffe08a', '#ff9d2b'], 2, .8, .25, 2);
 }
 function trailFx(s) { // called every frame per shot in flight; cheap, throttled
+  if (s.kind === 'toast') {
+    if (s.t >= (s.nextSmoke || 0)) {
+      emitSmoke(s.x, s.y, s.z, 'grey', .40, 1);
+      s.nextSmoke = s.t + .075;
+    }
+    return;
+  }
   if (PARTS.length > PART_MAX * .7 || Math.random() < .35) return;
   if (s.kind === 'chili') part({ k: 'ember', x: s.x, y: s.y, z: s.z, vx: (Math.random() - .5) * .4, vy: (Math.random() - .5) * .4, vz: .6, life: .35, age: 0, c: Math.random() < .5 ? '#ffae2b' : '#ff5a1a', s: 4, r: 0 });
   else if (s.kind === 'magic') part({ k: 'star', x: s.x, y: s.y, z: s.z, vx: 0, vy: 0, vz: .2, life: .4, age: 0, c: '#d9a8ff', s: 3, r: Math.random() * 6 });
   else if (s.kind === 'cracker') part({ k: 'spark', x: s.x, y: s.y, z: s.z + .25, vx: (Math.random() - .5) * 2, vy: (Math.random() - .5) * 2, vz: 1, life: .2, age: 0, c: '#ffd36b', s: 2, r: 0 });
-  else if (s.kind === 'egg') part({ k: 'ember', x: s.x, y: s.y, z: s.z, vx: 0, vy: 0, vz: .4, life: .5, age: 0, c: '#ffffff', s: 3.5, r: 0 });
+
   else if (s.kind === 'water') part({ k: 'drop', x: s.x, y: s.y, z: s.z, vx: (Math.random() - .5) * .6, vy: (Math.random() - .5) * .6, vz: -.5, life: .3, age: 0, c: '#9fe3ff', s: 2.5, r: 0 });
 }
 function impactFx(kind, x, y, big) { // a shot lands
   if (kind === 'rock') { burst(x, y, .3, 8, 'dot', ['#8a7a6a', '#bda88a', '#5e5246'], 2.4, 2.6, .6, 3.5); emitSmoke(x, y, .1, 'dust', .45, 2); word('ปั้ก!', x, y, 1.1, '#fff2c2'); shake(1.5); }
   else if (kind === 'pebble') burst(x, y, .4, 4, 'spark', ['#fff4cf', '#ffd36b'], 2.6, 1.2, .2, 2);
-  else if (kind === 'egg') { burst(x, y, .2, 14, 'dot', ['#ffd94a', '#fff6e0', '#ffb300'], 3.2, 3, .7, 4); ring(x, y, 1.6, 'rgba(255,236,150,', .45, 6); emitSmoke(x, y, .2, 'grey', 1, 3); word('ตูม!', x, y, 1.3, '#ffd94a', 1.3); shake(4.5); }
+  else if (kind === 'toast') {
+    burst(x, y, .22, 22, 'crumb', ['#ffdb8b', '#b55c2e', '#e09a50', '#fff0bd'], 3.8, 3.5, .75, 4.5);
+    burst(x, y, .15, 6, 'spark', ['#fff4b9', '#ffa832'], 3.6, 1.8, .24, 3.5);
+    ring(x, y, 1.5, 'rgba(255,208,111,', .42, 6); shake(4.5);
+  }
   else if (kind === 'water') { burst(x, y, .6, 10, 'drop', ['#8fe0ff', '#d4f4ff', '#4cc2ff'], 2.4, 2, .55, 3); ring(x, y, .7, 'rgba(160,230,255,', .35, 3); }
   else if (kind === 'chili') { burst(x, y, .3, 14, 'ember', ['#ffef7a', '#ffae2b', '#ff5a1a', '#e3261a'], 2.2, 2.2, .6, 5); ring(x, y, 1, 'rgba(255,120,40,', .4, 5); word('ฟู่!', x, y, 1.1, '#ffae2b'); shake(1.5); }
   else if (kind === 'tomato') { burst(x, y, .2, 12, 'dot', ['#e8231a', '#c4140f', '#ffd27a'], 2.8, 2.4, .65, 3.5); word('แปะ!', x, y, 1.1, '#ff5a4a', 1.1); shake(2.5); }
@@ -82,6 +93,11 @@ function drawParts(dt) {
     if (p.k === 'spark') { var e = toScreen(p.x - p.vx * .06, p.y - p.vy * .06, p.z - p.vz * .06); ctx.strokeStyle = p.c; ctx.lineWidth = sz * .7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(o.x, o.y); ctx.lineTo(e.x, e.y); ctx.stroke(); }
     else if (p.k === 'drop') { ctx.beginPath(); ctx.ellipse(o.x, o.y, sz * .55, sz * (1 + Math.min(1.5, Math.abs(p.vz) * .25)) * .6, 0, 0, 7); ctx.fill(); }
     else if (p.k === 'ember') { var f = sz * (1 - q * .6) * (.8 + Math.random() * .4); ctx.fillRect(o.x - f / 2, o.y - f / 2, f, f); }
+    else if (p.k === 'crumb') {
+      p.r += dt * 7; ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(p.r);
+      ctx.beginPath(); ctx.moveTo(-sz, -.35 * sz); ctx.lineTo(.1 * sz, -.7 * sz);
+      ctx.lineTo(sz, 0); ctx.lineTo(.43 * sz, .65 * sz); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
     else if (p.k === 'star') { p.r += dt * 8; var t = sz * 1.3; ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(p.r); ctx.fillRect(-t / 2, -t / 8, t, t / 4); ctx.fillRect(-t / 8, -t / 2, t / 4, t); ctx.restore(); }
     else if (p.k === 'feather') { p.r += dt * 3; ctx.save(); ctx.translate(o.x + Math.sin(p.r) * 3 * s, o.y); ctx.rotate(Math.sin(p.r) * .6); ctx.beginPath(); ctx.ellipse(0, 0, sz * 1.2, sz * .4, 0, 0, 7); ctx.fill(); ctx.restore(); }
     else { ctx.fillRect(o.x - sz / 2, o.y - sz / 2, sz, sz); }

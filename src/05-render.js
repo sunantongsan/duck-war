@@ -310,6 +310,14 @@ function drawTurret(b, c, dead) {
   var tu = ART.turrets[B[b.k].turret], st = levelArt(b.lv, tu.stages), im = img(st.file); if (!ready(im)) return;
   var p = toScreen(c.x, c.y), k = cam.s / st.ppu * (st.fit || tu.fit || 1), cs = st.cell, w = wobble(b);
   var dir = ((Math.round((b.aim === undefined ? 2.36 : b.aim) / (Math.PI / 8)) % 16) + 16) % 16, rec = b.fire ? Math.max(0, 1 - (now() - b.fire) / 220) : 0;
+  if (st.toaster) {
+    var elapsed = b.fire ? (R && screen === 'raid' ? R.now || now() : now()) - b.fire : Infinity;
+    var pose = dead ? 5 : b.press > .20 ? 2 : b.press > 0 ? 1 : elapsed < 130 ? 3 : elapsed < 300 ? 4 : 0;
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w[0] * toasterFacing(b), w[1]);
+    if (b.lv === 0) ctx.globalAlpha = .55;
+    ctx.drawImage(im, (pose % 3) * cs, Math.floor(pose / 3) * cs, cs, cs, -st.ax * k, -st.ay * k, cs * k, cs * k);
+    ctx.restore(); return;
+  }
   function cell(n, dx, dy) { ctx.drawImage(im, (n % 6) * cs, Math.floor(n / 6) * cs, cs, cs, -st.ax * k + dx, -st.ay * k + dy, cs * k, cs * k); }
   ctx.save(); ctx.translate(p.x, p.y); ctx.scale(w[0], w[1]); if (b.lv === 0) ctx.globalAlpha = .55;
   if (dead) { cell(17, 0, 0); ctx.restore(); return; }
@@ -610,11 +618,21 @@ function drawCrown(x, y, s, kind) { // gold crown that sits on the king's and qu
   ctx.restore();
 }
 // ---------- shots and effects ----------
-var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], egg: ['#fff6e0', 7], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4], tomato: ['#e8231a', 6] };
+var SHOT = { rock: ['#8a7a6a', 6], pebble: ['#c9b38f', 3.5], toast: ['#ffcb74', 8], water: ['#6fd0ff', 5], chili: ['#ff3d1f', 5], cracker: ['#e8322a', 4], magic: ['#b46bff', 5], feather: ['#ffffff', 4], tomato: ['#e8231a', 6] };
 function drawShot(s) {
   trailFx(s);
   var p = toScreen(s.x, s.y, s.z), g = toScreen(s.x, s.y), st = SHOT[s.kind] || SHOT.pebble, r = st[1] * cam.s / 40;
   ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y, r, r * .5, 0, 0, 7); ctx.fill();
+  if (s.kind === 'toast') {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(s.t * 6.5); ctx.scale(r, r);
+    ctx.fillStyle = '#ffcc75'; ctx.strokeStyle = '#9b4b25'; ctx.lineWidth = .24;
+    ctx.beginPath(); ctx.moveTo(-.69, .80); ctx.lineTo(.69, .80); ctx.lineTo(.74, -.24);
+    ctx.bezierCurveTo(1.28, -.83, .55, -1.13, 0, -1.11);
+    ctx.bezierCurveTo(-.55, -1.13, -1.28, -.83, -.74, -.24);
+    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#cd8242';
+    ctx.fillRect(-.38, -.33, .21, .14); ctx.fillRect(.16, .18, .19, .16);
+    ctx.restore(); return;
+  }
   ctx.fillStyle = st[0]; ctx.strokeStyle = 'rgba(60,40,20,.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill(); ctx.stroke();
   if (s.kind === 'cracker') { ctx.fillStyle = '#ffd23f'; ctx.fillRect(p.x - r * .5, p.y - r * 1.6, r, r * .6); ctx.fillStyle = 'rgba(255,220,120,' + (.5 + Math.random() * .5) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y - r * 2, r * .5, 0, 7); ctx.fill(); }   // lit fuse
   if (s.kind === 'feather') { var ang = Math.atan2((s.ty - s.fy) * ISO, s.tx - s.fx); ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#9fb3c8'; ctx.lineWidth = 1;
@@ -639,7 +657,7 @@ function drawFx(f, dt) {
     for (var j = 0; j < 9; j++) { var ang = j * .7 + (f.seed || 0), dd = R0 * (.2 + q * 1.1) * (.6 + (j % 3) * .2), hh = Math.sin(Math.min(1, q * 1.6) * Math.PI) * R0 * .5;
       ctx.fillStyle = j % 3 ? 'rgba(220,25,20,' + a1 + ')' : 'rgba(255,220,120,' + a1 + ')'; ctx.beginPath(); ctx.arc(c.x + Math.cos(ang) * dd, c.y + Math.sin(ang) * dd * ISO - hh, (j % 3 ? 3.2 : 2) * s + 1, 0, 7); ctx.fill(); }
     return true; }
-  if (f.t === 'splat') { ctx.fillStyle = f.kind === 'egg' ? 'rgba(255,214,80,' + (.7 * (1 - q)) + ')' : f.kind === 'chili' ? 'rgba(255,90,30,' + (.7 * (1 - q)) + ')' : 'rgba(130,210,255,' + (.6 * (1 - q)) + ')';
+  if (f.t === 'splat') { ctx.fillStyle = f.kind === 'chili' ? 'rgba(255,90,30,' + (.7 * (1 - q)) + ')' : 'rgba(130,210,255,' + (.6 * (1 - q)) + ')';
     ctx.beginPath(); ctx.ellipse(c.x, c.y, (f.size || 1) * cam.s * .7 * (.5 + q), (f.size || 1) * cam.s * .35 * (.5 + q), 0, 0, 7); ctx.fill(); return true; }
   if (f.t === 'heal') { ctx.fillStyle = 'rgba(110,230,120,' + (1 - q) + ')'; ctx.font = 'bold ' + (16 * s | 0) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+', c.x, c.y - 30 * s - q * 20 * s); return true; }
   return true;

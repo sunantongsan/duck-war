@@ -123,4 +123,20 @@ ok(g('grid()[barrierCell]===0 && R.routeCache.size===0'),'a destroyed wall opens
 const reach=g(`(function(){var bad=[];for(var L=2;L<=MAX_LV;L++){var hl=L-1,c=B.hq.store*Math.pow(1.4,hl-1),n=maxCount('honeyjar',hl),jl=Math.min(MAX_LV,hl+1);c+=n*B.honeyjar.cap*Math.pow(1.7,jl-1);if(c<bCost('hq',L))bad.push(L);}return bad.join(',')})()`);
 ok(reach==='','every duck-house level is affordable'+(reach?' (not: '+reach+')':''));
 ok(g('maxCount("honeyjar",11)===5&&maxCount("veggiejar",11)===5'),'5 honey and 5 veggie jars at high levels');
+// The old save id is the toaster in both the village and raids.
+const toasterPaints = Array.from({length: 20}, (_, i) => ctx.levelArt(i + 1, ctx.ART.turrets.mortar.stages).file);
+ok(new Set(toasterPaints).size === 20 && toasterPaints.every(present), 'twenty packaged toaster atlases');
+ok(g('bMaxLv("mortar", 15) === 20 && bMaxLv("slingshot", 15) === 15'), 'only the toaster extends to twenty');
+g('hq.lv=15; D.buildings=D.buildings.filter(b=>b.k!=="honeyjar"); for(let i=0;i<5;i++) D.buildings.push({k:"honeyjar",lv:15});');
+g('var savedTower={id:5432,k:"mortar",lv:15,x:1,y:1}; D.buildings.push(savedTower); writeSave(); D=loadSave(); savedTower=D.buildings.find(b=>b.id===5432);');
+ok(g('B[savedTower.k].shot==="toast" && savedTower.lv===15'), 'old mortar save loads at the same level');
+ok(g('Array.from({length:5},()=>{ D.res.honey=capacity("honey"); D.res.coin=1e8; if(!upgradeBuilding(savedTower))return false; finishNow(savedTower); homeTick(); return true; }).every(Boolean) && savedTower.lv===20 && !upgradeBuilding(savedTower)'), 'normal upgrade flow reaches twenty and stops');
+ok(g('catBase(60).buildings.some(b=>b.k==="mortar" && b.lv===20)'), 'late raid contains a level twenty toaster');
+g('clearFx(); SMOKE.length=0; startRaid(8); var gun=R.buildings.find(b=>b.k==="mortar"), cc=center(gun); var dummy={kind:"giant",side:"duck",hp:900,max:900,x:cc.x+5,y:cc.y}; R.ducks=R.troops=[dummy]; R.shots=[]; gun.aim=0;');
+g('turretTick(gun,.19)');
+ok(g('gun.press>0 && R.shots.length===0'), 'baker presses before the first launch');
+g('turretTick(gun,.20); var bread=R.shots[0]; shotTick(bread,.15); trailFx(bread);');
+ok(g('bread.kind==="toast" && bread.z>bread.fz && SMOKE.some(p=>p.kind==="grey")'), 'toast rises with a smoke trail');
+g('var neighbour=Object.assign({},dummy,{x:dummy.x+.7}), flyer=Object.assign({},dummy,{kind:"plane"}); R.troops.push(neighbour,flyer); shotTick(bread,bread.dur)');
+ok(g('dummy.hp<900 && neighbour.hp<900 && flyer.hp===900 && PARTS.some(p=>p.k==="crumb")'), 'burst scatters crumbs and damages nearby ground troops');
 console.log(fail?fail+' failed':'all passed');process.exit(fail?1:0);

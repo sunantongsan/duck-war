@@ -7,7 +7,7 @@ function upgradeFile(file, offset) {
   return offset ? file.replace('.webp', '_v' + (offset + 1) + '.webp') : file;
 }
 function levelArt(level, stages) {
-  var lv = clamp(level || 1, 1, MAX_LV);
+  var lv = clamp(level || 1, 1, stages.byLevel.length - 1);
   return stages.byLevel[lv];
 }
 function indexLevelArt(stages, turret) {
@@ -20,7 +20,16 @@ function indexLevelArt(stages, turret) {
   }
 }
 Object.keys(ART.buildings).forEach(function (key) { indexLevelArt(ART.buildings[key].stages, false); });
-Object.keys(ART.turrets).forEach(function (key) { indexLevelArt(ART.turrets[key].stages, true); });
+// The save key 'mortar' is also used by existing buildings and queued upgrades.
+var TOASTER_LEVELS = 20;
+var toasterStages = Array.from({ length: TOASTER_LEVELS }, function (_, i) {
+  return { file: 'toaster_' + String(i + 1).padStart(2, '0') + '.webp', cell: 192, ax: 96, ay: 142, ppu: 64, toaster: true };
+});
+toasterStages.byLevel = [null].concat(toasterStages);
+ART.turrets.mortar = { stages: toasterStages };
+Object.keys(ART.turrets).forEach(function (key) {
+  if (key !== 'mortar') indexLevelArt(ART.turrets[key].stages, true);
+});
 var WALL_ART = [null];
 for (var wallLv = 1; wallLv <= MAX_LV; wallLv++) {
   var wallTier = Math.ceil(wallLv * 6 / MAX_LV), wallSet = ART.walls[wallTier] || ART.walls['1'];
@@ -48,17 +57,24 @@ var B = {
   workshop:      { name: 'โรงนาช่างเป็ด',      size: 2, art: 'workshop',      hp: 500, res: 'honey', cost: 4000, time: 30, kind: 'deco', unlock: 4, max: [0, 0, 0, 1, 1, 1, 1, 1] },
   slingshot:     { name: 'หนังสติ๊กยักษ์',      size: 2, turret: 'slingshot',  hp: 520, res: 'honey', cost: 250, time: 8, kind: 'defense', range: 6.5, dmg: 18, rate: 0.9, shot: 'rock', ground: true, max: [2, 2, 3, 3, 4, 4, 5, 5] },
   boxtower:      { name: 'หอกล่องเป็ดยิงไกล',   size: 2, turret: 'boxtower',   hp: 480, res: 'honey', cost: 1000, time: 15, kind: 'defense', range: 8, dmg: 11, rate: 0.75, shot: 'pebble', ground: true, air: true, unlock: 2, max: [0, 1, 2, 2, 3, 3, 4, 4] },
-  mortar:        { name: 'หม้อความดันยิงไกล',  size: 2, turret: 'mortar',     hp: 500, res: 'honey', cost: 6000, time: 40, kind: 'defense', range: 10, minRange: 3, dmg: 30, rate: 4.5, shot: 'egg', splash: 1.5, ground: true, unlock: 3, max: [0, 0, 1, 1, 2, 2, 3, 3] },
+  mortar:        { name: 'ป้อมเป็ดปิ้งขนมปัง',  size: 2, turret: 'mortar',     hp: 500, res: 'honey', cost: 6000, time: 40, kind: 'defense', range: 10, minRange: 3, dmg: 30, rate: 4.5, shot: 'toast', splash: 1.5, ground: true, unlock: 3, max: [0, 0, 1, 1, 2, 2, 3, 3] },
   watergun:      { name: 'ปืนฉีดน้ำต่อสู้อากาศ', size: 2, turret: 'watergun',  hp: 600, res: 'honey', cost: 22000, time: 60, kind: 'defense', range: 9, dmg: 60, rate: 1, shot: 'water', air: true, unlock: 4, max: [0, 0, 0, 1, 1, 2, 2, 3] },
   chili:         { name: 'ป้อมเชฟพริกไฟ',       size: 2, turret: 'chili',      hp: 650, res: 'honey', cost: 40000, time: 90, kind: 'defense', range: 5, dmg: 40, rate: 0.55, shot: 'chili', ground: true, air: true, unlock: 6, max: [0, 0, 0, 0, 0, 1, 1, 2] },
   wall:          { name: 'กำแพง',               size: 1, wall: true,           hp: 300, res: 'honey', cost: 50, time: 0, kind: 'wall', max: [0, 25, 50, 75, 100, 125, 150, 175] }
 };
 Object.keys(B).forEach(function (k) { B[k].key = k; });
 function maxCount(k, hqLv) { var m = B[k].max; return typeof m === 'number' ? m : (m[Math.min(m.length, hqLv) - 1] || 0); }
-function bCost(k, lv) { var b = B[k]; return b.wall ? grow(b.cost, lv, 2.1) : grow(b.cost, lv, 1.9); }
-function bTime(k, lv) { var b = B[k]; return lv === 1 && b.kind !== 'hq' ? b.time : Math.round(b.time * Math.pow(2.2, lv - 1)); }
+function bCost(k, lv) { var b = B[k];
+  // Later toaster upgrades must fit the five honey jars available at HQ 15.
+  if (k === 'mortar' && lv > 8) return grow(grow(b.cost, 8, 1.9), lv - 7, 1.30);
+  return b.wall ? grow(b.cost, lv, 2.1) : grow(b.cost, lv, 1.9); }
+function bTime(k, lv) { var b = B[k];
+  if (k === 'mortar' && lv > 15) return bTime(k, 15) + (lv - 15) * 86400;
+  return lv === 1 && b.kind !== 'hq' ? b.time : Math.round(b.time * Math.pow(2.2, lv - 1)); }
 function bHp(k, lv) { return grow(B[k].hp, lv, 1.2); }
-function bMaxLv(k, hqLv) { return k === 'hq' ? MAX_LV : Math.min(MAX_LV, hqLv + (B[k].kind === 'wall' ? 0 : 1)); }
+function bMaxLv(k, hqLv) {
+  if (k === 'mortar' && hqLv >= MAX_LV) return TOASTER_LEVELS;
+  return k === 'hq' ? MAX_LV : Math.min(MAX_LV, hqLv + (B[k].kind === 'wall' ? 0 : 1)); }
 
 // Troops. size = housing space; time = training seconds; pref: what they go for first.
 var U = {   // Clash counterpart in the comment; unlock = training-yard level
