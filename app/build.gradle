@@ -4,13 +4,13 @@ android {
     compileSdk 36
     buildFeatures { buildConfig true }
     defaultConfig {
-        applicationId 'com.sunantongsan.duckwar'
+        applicationId 'com.sunantongsan.novastriker'
         minSdk 26
         targetSdk 36
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 45
+        versionName '2.0.0'
         // Content patches (game.js, index.html, art) are downloaded from here at start-up.
-        buildConfigField 'String', 'PATCH_CHANNEL', '"test"'
+        buildConfigField 'String', 'PATCH_CHANNEL', '"live"'
         buildConfigField 'String', 'PATCH_ORIGIN', groovy.json.JsonOutput.toJson(providers.gradleProperty('patchOrigin').getOrElse(''))
         buildConfigField 'String', 'PATCH_BACKUP_ORIGIN', '""'
     }

@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "channel": "test",
-  "nativeVersion": 1,
+  "channel": "live",
+  "nativeVersion": 45,
   "contentVersion": 27,
-  "label": "0.3.6"
+  "label": "2.0.0"
 }

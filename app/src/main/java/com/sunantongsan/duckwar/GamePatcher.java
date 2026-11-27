@@ -26,9 +26,9 @@ final class GamePatcher {
     private final android.content.SharedPreferences prefs;
     GamePatcher(Context ctx,Listener listener) {
         this.context=ctx;this.listener=listener;
-        directory=new File(ctx.getFilesDir(),"game-patches");directory.mkdirs();
+        directory=new File(ctx.getFilesDir(),"duck-content-patches");directory.mkdirs();
         chunkDirectory=new File(directory,"chunks");chunkDirectory.mkdirs();
-        prefs=ctx.getSharedPreferences("game-patches",Context.MODE_PRIVATE);
+        prefs=ctx.getSharedPreferences("duck-content-patches",Context.MODE_PRIVATE);
     }
     void start() { worker.execute(this::prepare); }
     private void status(String message,int percent) { if(!stopped)listener.progress(message,percent); }
