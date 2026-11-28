@@ -8,7 +8,7 @@ android {
         minSdk 26
         targetSdk 36
         versionCode 1
-        versionName '0.3.7'
+        versionName '0.3.9'
         // Content patches (game.js, index.html, art) are downloaded from here at start-up.
         buildConfigField 'String', 'PATCH_CHANNEL', '"test"'
         buildConfigField 'String', 'PATCH_ORIGIN', groovy.json.JsonOutput.toJson(providers.gradleProperty('patchOrigin').getOrElse('https://sunantongsan.github.io/duck-war'))

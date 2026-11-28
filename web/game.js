@@ -1969,7 +1969,8 @@ function raidPreload() {
     } });
   preload(files);
 }
-function enterRaid(n) { clearFx(); startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
+function adsBattle(on) { try { if (window.DuckAds && window.DuckAds.battle) window.DuckAds.battle(on); } catch (e) {} }   // no ad loading while a raid runs (older apps lack it)
+function enterRaid(n) { adsBattle(true); clearFx(); startRaid(n); raidPreload(); screen = 'raid'; sfx('horn'); selectBuilding(null); centerCamera(); sheetPrime(Object.keys(R.army).filter(function (k) { return R.army[k] > 0; }).concat(Object.keys(R.heroes), R.troops.map(function (t) { return t.kind; }))); raidBar(); hud(); dirty = true; }
 function heroThumb(k) { // portrait for a hero card: the dog and egret have their own; the colonel is cut from his sheet (front-facing idle)
   var u = U[k]; if (u.art !== 'colonel') return 'background-image:url(assets/p_' + u.art + '.webp)';
   var L = ART.troopLayout, a = ART.troops.colonel, cols = 21; return 'background-image:url(assets/' + a.file + ');background-size:' + cols * 100 + '% ' + L.dirs * 100 + '%;background-position:0% ' + (2 / (L.dirs - 1) * 100) + '%';
@@ -2022,7 +2023,7 @@ function showResult() {
     }; body.appendChild(b);
   });
 }
-function goHome() { clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
+function goHome() { adsBattle(false); clearFx(); closeSheet(); screen = 'home'; R = null; SMOKE = []; centerCamera(0, hqCenter()); hud(); dirty = true; }
 
 // ---------- game menu (⚙ top right): sound, map look, and "อื่นๆ" -> credits, about ----------
 function soundMenu() {
@@ -2255,7 +2256,7 @@ function tutUi() {
   document.body.appendChild(ring); document.body.appendChild(box); document.body.appendChild(hand);
   TUT_EL = { box: box, p: p, btns: btns, ring: ring, hand: hand }; return TUT_EL;
 }
-function tutHide() { if (!TUT_EL) return; TUT_EL.box.classList.remove('show'); TUT_EL.ring.style.display = TUT_EL.hand.style.display = 'none'; TUT_KEY = ''; }
+function tutHide() { if (!TUT_EL || TUT_KEY === '' && !TUT_EL.box.classList.contains('show')) return;   // already hidden: no DOM writes every frame TUT_EL.box.classList.remove('show'); TUT_EL.ring.style.display = TUT_EL.hand.style.display = 'none'; TUT_KEY = ''; }
 function tutShow(text, ok, onOk, skippable) {
   var u = tutUi(), key = text + '|' + (ok || '') + '|' + !!skippable;
   if (key !== TUT_KEY) {

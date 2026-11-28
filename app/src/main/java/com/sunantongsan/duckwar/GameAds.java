@@ -25,6 +25,16 @@ final class GameAds {
     private boolean privacyFormOpen;
     private boolean bannerAllowed;
     private long bannerRetryAt;
+    /** During a raid no ad is loaded: an ad load builds a hidden WebView on the main thread and made battles stutter. */
+    private boolean inBattle;
+    @JavascriptInterface public void battle(boolean on) {
+        activity.runOnUiThread(() -> {
+            if (destroyed || inBattle == on) return;
+            inBattle = on;
+            if (on) { adHandler.removeCallbacks(rewardRetry); adHandler.removeCallbacks(bannerRetry); }
+            else if (sdkReady) load();
+        });
+    }
 
 
     private static final String REWARD_UNIT = "ca-app-pub-3940256099942544/5224354917";
@@ -69,11 +79,11 @@ final class GameAds {
     }
     private void scheduleReward(long delay) {
         adHandler.removeCallbacks(rewardRetry);
-        if (foreground && !destroyed && !privacyFormOpen) adHandler.postDelayed(rewardRetry, delay);
+        if (foreground && !destroyed && !privacyFormOpen && !inBattle) adHandler.postDelayed(rewardRetry, delay);
     }
     private void preloadReward() {
         long now = SystemClock.elapsedRealtime();
-        if (!sdkReady || destroyed || privacyFormOpen || !foreground || !consent.canRequestAds() || showing || rewardLoading) return;
+        if (!sdkReady || destroyed || privacyFormOpen || !foreground || inBattle || !consent.canRequestAds() || showing || rewardLoading) return;
         long nextLoad = rewardReady == null ? rewardRetryAt : rewardLoadedAt + REWARD_TTL_MS;
         if (nextLoad > now) {
             scheduleReward(nextLoad - now);
@@ -131,7 +141,7 @@ final class GameAds {
         if (banner!=null) { banner.destroy(); banner=null; }
     }
     private void loadBanner() {
-        if (!sdkReady || !foreground || !bannerAllowed || !enabled() || !consent.canRequestAds() || banner!=null) return;
+        if (!sdkReady || !foreground || inBattle || !bannerAllowed || !enabled() || !consent.canRequestAds() || banner!=null) return;
         adHandler.removeCallbacks(bannerRetry);
         long remaining = bannerRetryAt - SystemClock.elapsedRealtime();
         if (remaining > 0) {
@@ -155,7 +165,7 @@ final class GameAds {
                 clearBanner();
                 long delay = error.getCode() == AdRequest.ERROR_CODE_NETWORK_ERROR ? 15000L : 60000L;
                 bannerRetryAt = SystemClock.elapsedRealtime() + delay;
-                if (foreground && bannerAllowed) adHandler.postDelayed(bannerRetry, delay);
+                if (foreground && bannerAllowed && !inBattle) adHandler.postDelayed(bannerRetry, delay);
             }
         });
         Bundle extras=new Bundle(); extras.putString("npa","1");
@@ -204,7 +214,7 @@ final class GameAds {
     private void load() {
         preloadReward();
         loadBanner();
-        if (!sdkReady || !foreground || !enabled() || !consent.canRequestAds() || loading || ready!=null) return;
+        if (!sdkReady || !foreground || inBattle || !enabled() || !consent.canRequestAds() || loading || ready!=null) return;
         loading=true;
         final int requestGeneration=generation;
         Bundle extras = new Bundle(); extras.putString("npa", "1");
