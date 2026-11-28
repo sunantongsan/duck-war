@@ -90,7 +90,8 @@ function tutUi() {
   document.body.appendChild(ring); document.body.appendChild(box); document.body.appendChild(hand);
   TUT_EL = { box: box, p: p, btns: btns, ring: ring, hand: hand }; return TUT_EL;
 }
-function tutHide() { if (!TUT_EL || TUT_KEY === '' && !TUT_EL.box.classList.contains('show')) return;   // already hidden: no DOM writes every frame TUT_EL.box.classList.remove('show'); TUT_EL.ring.style.display = TUT_EL.hand.style.display = 'none'; TUT_KEY = ''; }
+// already hidden: no DOM writes every frame
+function tutHide() { if (!TUT_EL || TUT_KEY === '' && !TUT_EL.box.classList.contains('show')) return; TUT_EL.box.classList.remove('show'); TUT_EL.ring.style.display = TUT_EL.hand.style.display = 'none'; TUT_KEY = ''; }
 function tutShow(text, ok, onOk, skippable) {
   var u = tutUi(), key = text + '|' + (ok || '') + '|' + !!skippable;
   if (key !== TUT_KEY) {
