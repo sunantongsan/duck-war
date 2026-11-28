@@ -84,6 +84,17 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 .p-fork{background-image:url(assets/p_fork.webp)}.p-sling{background-image:url(assets/p_sling.webp)}.p-giant{background-image:url(assets/p_giant.webp)}.p-digger{background-image:url(assets/p_digger.webp)}
 .p-pot{background-image:url(assets/p_pot.webp)}.p-nurse{background-image:url(assets/p_nurse.webp)}.p-chef{background-image:url(assets/p_chef.webp)}.p-pig{background-image:url(assets/p_pig.webp)}.p-dog{background-image:url(assets/p_dog.webp)}.p-balloon{background-image:url(assets/p_balloon.webp)}.p-plane{background-image:url(assets/p_plane.webp)}
+#tut{position:fixed;left:50%;translate:-50% 0;width:min(600px,76vw);display:none;align-items:flex-end;gap:6px;z-index:30;pointer-events:none}
+#tut.show{display:flex;animation:pop .28s cubic-bezier(.3,1.6,.5,1)}
+#tut.top{top:calc(48px + var(--safe-t))}#tut.bottom{bottom:calc(8px + var(--safe-b))}
+#tut .tut-face{flex:none;width:86px;height:86px;background-repeat:no-repeat;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}
+#tut .tut-talk{pointer-events:auto;flex:1;background:var(--cream);border:3px solid #fff;border-radius:18px;padding:5px 12px 7px;box-shadow:0 5px 0 #d9b46a,0 10px 20px rgba(0,0,0,.3)}
+#tut .tut-talk b{color:#b5651d;font-size:13px}#tut p{margin:2px 0 4px;font-size:15px;line-height:1.35}
+#tut .tut-btns{display:flex;gap:10px;justify-content:flex-end;align-items:center}#tut .tut-btns .btn{padding:4px 14px;font-size:14px}
+#tut .skip{background:none;border:0;opacity:.55;font-size:12px;text-decoration:underline;color:inherit}
+.tut-ring{position:fixed;border:4px solid #ffe14d;border-radius:16px;box-shadow:0 0 0 4px rgba(255,160,0,.45),0 0 18px #ffd000;pointer-events:none;z-index:29;display:none;animation:tutpulse .7s ease-in-out infinite alternate}
+.tut-hand{position:fixed;font-size:38px;line-height:1;pointer-events:none;z-index:31;display:none;animation:tutbob .55s ease-in-out infinite alternate;filter:drop-shadow(0 3px 2px rgba(0,0,0,.4))}
+@keyframes tutpulse{to{transform:scale(1.07);opacity:.75}}@keyframes tutbob{to{translate:0 9px}}
 </style>
 </head>
 <body>

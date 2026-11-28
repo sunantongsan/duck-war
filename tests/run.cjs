@@ -139,6 +139,34 @@ g('turretTick(gun,.20); var bread=R.shots[0]; shotTick(bread,.15); trailFx(bread
 ok(g('bread.kind==="toast" && bread.z>bread.fz && SMOKE.some(p=>p.kind==="grey")'), 'toast rises with a smoke trail');
 g('var neighbour=Object.assign({},dummy,{x:dummy.x+.7}), flyer=Object.assign({},dummy,{kind:"plane"}); R.troops.push(neighbour,flyer); shotTick(bread,bread.dur)');
 ok(g('dummy.hp<900 && neighbour.hp<900 && flyer.hp===900 && PARTS.some(p=>p.k==="crumb")'), 'burst scatters crumbs and damages nearby ground troops');
+// tutorial: the duck colonel walks a new player from building to the first raid, then gives one-time unlock tips
+g('screen="home";R=null;selected=null;placing=null;D=newGame();D.ground=0;tutStart();');
+ok(g('D.tut===0'),'new player starts the tutorial');
+g('tutTick();tutAdvance();tutTick();tutAdvance();tutTick();');
+ok(g('D.tut===2'),'tutorial reaches the build step');
+g('(function(){for(var x=2;x<38;x++)for(var y=2;y<38;y++)if(footprintFree("slingshot",x,y)){placeBuilding("slingshot",x,y);return;}})();tutTick();');
+ok(g('D.tut===3&&!!newSling()&&newSling().lv===0'),'placing the slingshot moves on to the builder wait');
+g('finishNow(newSling());tutTick();');
+ok(g('D.tut===4'),'finished slingshot moves on to training');
+g('train("fork");tutTick();');
+ok(g('D.tut===5'),'training a fork duck moves on to the attack');
+g('screen="raid";startRaid(D.raid);tutTick();');
+ok(g('D.tut===6'),'entering a raid asks to drop ducks');
+g('(function(){R.pick="fork";for(var i=0;i<40;i++){if(canDeploy(0.5,2+i*.5)){deploy(0.5,2+i*.5);return;}}})();tutTick();');
+ok(g('D.tut===7'),'first duck dropped: colonel waits quietly during the raid');
+g('screen="home";R=null;tutTick();');
+ok(g('D.tut===8'),'back home: tap the duck house');
+g('selectBuilding(hqB());tutTick();');
+ok(g('D.tut===9'),'duck house tapped: points at upgrade');
+g('tutAdvance();tutTick();tutAdvance();tutTick();');
+ok(g('D.tut==="done"'),'tutorial finishes');
+g('selectBuilding(null);hqB().lv=2;tutTick();');
+ok(g('TIP&&TIP.id==="hq2"'),'duck house level 2 brings a colonel tip');
+g('tipDone();tutTick();');
+ok(g('D.tips.hq2===1&&!TIP'),'a tip is shown only once');
+g('D=newGame();D.raid=6;hqB().lv=4;tutStart();');
+ok(g('D.tut==="done"&&D.tips.hq3===1&&!D.tips.hq5'),'existing bases skip the tutorial but keep future tips');
+g('tutReplay();');ok(g('D.tut===0'),'tutorial can be replayed from the menu');
 // A pending rewarded video belongs to the first tap, even if a second building is selected.
 let adRequests = 0;
 const rewardEvents = [];

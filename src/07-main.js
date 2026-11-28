@@ -34,7 +34,7 @@ function frame(t) {
     raidTick(dt); raidHud();
     if (stream && now() > stream.next && R.army[R.pick] > 0) { stream.next = now() + 110; dropTroop(stream.x + (Math.random() - .5) * .4, stream.y + (Math.random() - .5) * .4); }
   }
-  draw(dt); headWork(screen === 'raid'); sheetWork(screen === 'raid' ? 1 : 3);
+  draw(dt); tutTick(); headWork(screen === 'raid'); sheetWork(screen === 'raid' ? 1 : 3);
   requestAnimationFrame(frame);
 }
 function rangeRing(b) {
@@ -88,6 +88,7 @@ function boot() {
   window.duckPause = writeSave;
   document.addEventListener('visibilitychange', function () { if (document.hidden) writeSave(); });
   headPrepare(); sheetPrime(HERO_KEYS);   // the colonel walks the base, and all three heroes are ready for raids
+  tutStart();   // the duck colonel teaches new players (after they pick a map)
   if (D.ground === undefined) groundPicker(true);   // first start (or a save from before map looks): let the player pick a map
   window.duckReady = true;
   requestAnimationFrame(frame);

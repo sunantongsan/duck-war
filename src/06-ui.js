@@ -95,6 +95,7 @@ function buildMenu() {
     Object.keys(B).forEach(function (k) {
       var d = B[k]; if (k === 'hq') return;
       var have = count(k), max = maxCount(k, hqLv()), card = h('button', 'card' + (have >= max ? ' off' : ''));
+      card.dataset.k = k;
       var art = d.turret ? ART.turrets[d.turret].stages[0] : d.wall ? null : ART.buildings[d.art].stages[0];
       card.innerHTML = '<span class="n">' + have + '/' + max + '</span>' + (art ? '<span class="thumb" style="background-image:url(assets/' + art.file + ')' + (art.toaster ? ';background-size:300% 200%;background-position:0 0' : d.turret ? ';background-size:600% 300%;background-position:80% 100%' : '') + '"></span>' : '<span class="thumb wallthumb">🧱</span>') +
         '<b>' + d.name + '</b>' + (have >= max ? '<small>' + (d.unlock && d.unlock > hqLv() ? 'ปลดล็อกบ้านเป็ดเลเวล ' + d.unlock : 'ครบแล้ว') + '</small>' : costTag(d.res, bCost(k, 1)));
@@ -133,6 +134,7 @@ function armyMenu() {
     Object.keys(U).forEach(function (k) {
       if (U[k].hidden) return;
       var u = U[k], locked = (u.unlock || 1) > barracksLv(), card = h('button', 'card troop' + (locked ? ' off' : ''));
+      card.dataset.k = k;
       card.innerHTML = '<span class="n">' + (D.army[k] || 0) + '</span><span class="portrait" style="background-image:url(assets/p_' + u.art + '.webp)"></span><b>' + u.name + '</b>' +
         (locked ? '<small>ลานฝึกเลเวล ' + u.unlock + '</small>' : costTag(u.res, u.cost) + '<small>🏠' + u.space + ' · ⏱' + u.time + 'ว.</small>');
       card.onclick = function () { if (locked) { toast('อัปเกรดลานฝึกเป็ดเป็นเลเวล ' + u.unlock); return; } train(k); armyMenu(); hud(); };
@@ -150,7 +152,7 @@ function attackMenu() {
     var grid = h('div', 'levels');
     for (var n = 1; n <= Math.min(60, D.raid + 2); n++) (function (n) {
       var b = h('button', 'lvl' + (n > D.raid ? ' off' : ''), '<b>' + n + '</b><small>' + (n < D.raid ? '⭐' : n === D.raid ? 'ใหม่' : '🔒') + '</small>');
-      b.onclick = function () { if (n > D.raid) return; closeSheet(); enterRaid(n); }; grid.appendChild(b);
+      b.dataset.n = n; b.onclick = function () { if (n > D.raid) return; closeSheet(); enterRaid(n); }; grid.appendChild(b);
     })(n);
     body.appendChild(grid);
   });
@@ -238,6 +240,7 @@ function soundMenu() {
       var privacy = h('button', 'btn', 'ความเป็นส่วนตัวของโฆษณา');
       privacy.onclick = function () { window.DuckAds.settings(); }; gr.appendChild(privacy);
     }
+    var tb = h('button', 'btn', '📖 สอนเล่น'); tb.onclick = function () { if (screen !== 'home') { toast('กลับบ้านก่อนนะทหาร'); return; } tutReplay(); }; gr.appendChild(tb);
     var ob = h('button', 'btn', '📋 อื่นๆ'); ob.onclick = otherMenu; gr.appendChild(ob); body.appendChild(gr);
   });
 }
